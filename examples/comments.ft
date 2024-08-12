@@ -1,0 +1,16 @@
+first text
+second text before comment // This is a single line comment
+// This is a single line comment
+
+third text
+/** multiline in single line */
+/***/
+/** multiline
+in two lines */
+
+forth text
+/**
+multiline 
+with last in extra line
+*/
+last text
