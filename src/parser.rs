@@ -18,11 +18,11 @@ impl Parser{
                 print!("__")
             }
             begin_of_line = false;
-            if token == Token::Indentation {
+            if token == Token::Indent {
                 print!("\t");
             }
             print!("{:?}", token);
-            if token == Token::LineBreak {
+            if token == Token::LineBr {
                 println!();
                 begin_of_line = true;
             }
