@@ -17,9 +17,13 @@ fn main() {
         println!("Usage: flint [source file]");
         std::process::exit(64);
     } else if args.len() == 2 {
-        //repl.run_file(&args[1]);
+        println!("\n----------------- FILE ----------------- {} ----------------------------------------------\n", args[1]);
+        repl.run_file(&args[1]);
+        println!("\n");
+        println!("----------------- TOKENS --------------- {} ----------------------------------------------\n", args[1]);
         let tokens = lexer.tokenize_file(&args[1]);
         parser.parse_tokens(tokens);
+        println!("\n------------------TOKENS END ---------------------------------------------------------------\n");
     } else {
         repl.run_prompt();
     }
