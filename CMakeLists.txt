@@ -11,4 +11,6 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-lib
 
 add_executable(flint src/main.cpp
         src/Token.cpp
-        include/Token.h)
+        include/Token.h
+        src/Scanner.cpp
+        include/Scanner.h)

@@ -1,6 +1,8 @@
 #include <filesystem>
 #include <iostream>
 
+#include "Scanner.h"
+
 namespace fs = std::filesystem;
 
 int main() {
@@ -8,14 +10,16 @@ int main() {
 
     std::cout << "Current working directory: " << current_path << std::endl;
 
-    if(fs::directory_iterator(current_path) != fs::directory_iterator{}) {
-
+    if (fs::directory_iterator(current_path) != fs::directory_iterator{}) {
         std::cout << "Files in working directory:" << std::endl;
 
         for (auto it = fs::directory_iterator(current_path); it != fs::directory_iterator{}; ++it) {
-            std::cout << '\t' << *it << std::endl;
+            if(it->exists() && it->is_character_file()) {
+                std::cout << "Parsing file: " << *it << std::endl;
+                auto sc = Scanner(it);
+            }
         }
-    }else {
+    } else {
         std::cout << "The current directory is empty, abandoning..." << std::endl;
         return 64;
     }

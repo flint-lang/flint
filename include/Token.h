@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
+
+namespace fs = std::filesystem;
 
 enum class TokenType {
     //Single character tokens
@@ -23,19 +26,20 @@ enum class TokenType {
     IDENTIFIER, STRING, NUMBER,
 
     //Keywords
-    DEF, RETURN, IF, ELSE, WHILE, DO, UNTIL, FOR, IN, AS,
+    DEF, RETURN, IF, ELSE, WHILE, DO, UNTIL,
+    FOR, IN, AS, TRUE, FALSE,
 
     END_OF_FILE
 };
 
 class Token {
     TokenType type;
-    std::string lexeme;
-    std::string file;
+    std::string_view lexeme;
+    fs::path file;
     std::uint32_t line;
 
 public:
-    Token(TokenType type, std::string lexeme, std::string file, std::uint32_t line);
+    Token(TokenType type, std::string_view lexeme, const fs::path &file, std::uint32_t line);
 
     ~Token();
 };

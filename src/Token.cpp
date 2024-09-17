@@ -2,10 +2,10 @@
 
 #include <utility>
 
-Token::Token(const TokenType type, std::string lexeme, std::string file, const std::uint32_t line) {
+Token::Token(const TokenType type, std::string_view lexeme, const fs::path& file, const std::uint32_t line) {
     this->type = type;
-    this->lexeme = std::move(lexeme);
-    this->file = std::move(file);
+    this->lexeme = lexeme;
+    this->file = file;
     this->line = line;
 }
 
