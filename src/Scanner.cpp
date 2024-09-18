@@ -167,7 +167,7 @@ void Scanner::string() {
     }
 
     if (is_at_end()) {
-        Flint::error(line, "Unterminated string", file.filename().string());
+        Flint::error(line, "at the end of the file", "Unterminated string", file.filename().string());
     }
 
     //The closing "

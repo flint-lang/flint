@@ -5,7 +5,11 @@
 
 namespace Flint {
     void error(const uint32 line, const std::string &message, const std::string &file) {
-        report(line, "", message, file);
+        error(line, "", message, file);
+    }
+
+    void error(const uint32 line, const std::string & where, const std::string &message, const std::string &file) {
+        report(line, where, message, file);
     }
 
     void error(const Token &token, const std::string &message) {
