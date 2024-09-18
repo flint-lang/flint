@@ -6,21 +6,22 @@
 
 namespace fs = std::filesystem;
 
+using uint32 = std::uint32_t;
+
 enum class TokenType {
     //Single character tokens
-    LEFT_PAREN, RIGHT_PAREN, RIGHT_CARET,
+    LEFT_PAREN, RIGHT_PAREN,
     COMMA, DOT, PLUS, SEMICOLON, SLASH, STAR,
 
     //One or two character tokens
     BANG, BANG_EQUAL,
     EQUAL, EQUAL_EQUAL,
-    GREATER, GREATER_EQUAL,
-    LESS, LESS_EQUAL,
+    RIGHT_CARET, LESS_EQUAL,
     MINUS, ARROW,
     COLON, COLON_EQUAL,
 
-    //One ot n character tokens
-    LEFT_CARET, SWAP,
+    //One or n character tokens
+    LEFT_CARET, GREATER_EQUAL, SWAP,
 
     //Literals
     IDENTIFIER, STRING, NUMBER,
@@ -34,12 +35,21 @@ enum class TokenType {
 
 class Token {
     TokenType type;
-    std::string_view lexeme;
+    std::string lexeme;
     fs::path file;
-    std::uint32_t line;
+    uint32 line;
 
 public:
-    Token(TokenType type, std::string_view lexeme, const fs::path &file, std::uint32_t line);
+    Token(TokenType type, const std::string &lexeme, const fs::path &file, uint32 line);
+
+    [[nodiscard]] TokenType get_type() const;
+
+    [[nodiscard]] std::string get_lexeme() const;
+
+    [[nodiscard]] fs::path get_file() const;
+
+    [[nodiscard]] uint32 get_line() const;
 
     ~Token();
+
 };

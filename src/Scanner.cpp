@@ -2,14 +2,16 @@
 
 #include <fstream>
 
+#include "Flint.h"
+
 Scanner::Scanner(const fs::directory_iterator &path) {
-    initialize_keywords();
+    if (keywords.empty()) initialize_keywords();
     this->source = read_file(path);
     this->file = path->path();
     this->tokens = std::vector<TokenType>{};
 }
 
-std::vector<Token> Scanner::scan_tokens() {
+std::vector<Token> &Scanner::scan_tokens() {
     while (!is_at_end()) {
         start = current;
         scan_token();
@@ -31,23 +33,145 @@ void Scanner::scan_token() {
             add_token(TokenType::RIGHT_PAREN);
             break;
         }
-        case '>': {
-            add_token(TokenType::RIGHT_CARET);
+        case ',': {
+            add_token(TokenType::COMMA);
             break;
         }
+        case '.': {
+            add_token(TokenType::DOT);
+            break;
+        }
+        case '+': {
+            add_token(TokenType::PLUS);
+            break;
+        }
+        case ';': {
+            add_token(TokenType::SEMICOLON);
+            break;
+        }
+        case '*': {
+            add_token(TokenType::STAR);
+            break;
+        }
+        case '!': {
+            add_token(match('=') ? TokenType::BANG_EQUAL : TokenType::BANG);
+            break;
+        }
+        case '=': {
+            add_token(match('=') ? TokenType::EQUAL_EQUAL : TokenType::EQUAL);
+            break;
+        }
+        case '>': {
+            add_token(match('=') ? TokenType::LESS_EQUAL : TokenType::RIGHT_CARET);
+            break;
+        }
+        case '-': {
+            add_token(match('>') ? TokenType::ARROW : TokenType::MINUS);
+            break;
+        }
+        case ':': {
+            add_token(match('=') ? TokenType::COLON_EQUAL : TokenType::COLON);
+            break;
+        }
+        case '<': {
+            if (match('-') && match('>')) add_token(TokenType::SWAP);
+            add_token(match('=') ? TokenType::GREATER_EQUAL : TokenType::LEFT_CARET);
+            break;
+        }
+        case '/': {
+            if (match('/'))
+                while (peek() != '\n' && !is_at_end()) advance();
+            add_token(TokenType::SLASH);
+            break;
+        }
+        case ' ':
+        case '\r':
+        case '\t':
+            break;
+        case '\n': {
+            line++;
+            break;
+        }
+        case '"': {
+            string();
+            break;
+        }
+        default: {
+            if(isdigit(c))
+                number();
+            else if (isalpha(c))
+                identifier();
+            else
+                Flint::error(line, "Unexpected token", file.filename().string());
+        }
     }
-    // TODO: Finish method
 }
 
 bool Scanner::is_at_end() const { return current > source.length(); }
 
+bool Scanner::match(const char expected) {
+    if (is_at_end()) return false;
+    if (source[current] != expected) return false;
+
+    current++;
+    return true;
+}
+
 char Scanner::advance() { return source[current++]; }
+
+char Scanner::peek() const {
+    if (is_at_end()) return '\0';
+    return source[current];
+}
+
+char Scanner::peek_next() const {
+    if (current + 1 > source.length()) return '\0';
+    return source[current + 1];
+}
 
 void Scanner::add_token(const TokenType type) { add_token(type, ""); }
 
-
-void Scanner::add_token(const TokenType type, const std::string_view lexeme) {
+void Scanner::add_token(const TokenType type, const std::string &lexeme) {
     tokens.push_back(Token{type, lexeme, file, line});
+}
+
+void Scanner::identifier() {
+    while(isalpha(peek())) advance();
+
+    const std::string text = source.substr(start, current);
+    const TokenType type = (keywords.contains(text)) ? keywords[text] : TokenType::IDENTIFIER;
+
+    add_token(type);
+}
+
+void Scanner::number() {
+    while(isdigit(peek())) advance();
+
+    if(peek() == '.' && isdigit(peek_next())) {
+        // Consume the .
+        advance();
+
+        while(isdigit(peek())) advance();
+    }
+
+    add_token(TokenType::NUMBER, source.substr(start, current));
+}
+
+void Scanner::string() {
+    while (peek() != '"' && !is_at_end()) {
+        if (peek() == '\n') line++;
+        advance();
+    }
+
+    if (is_at_end()) {
+        Flint::error(line, "Unterminated string", file.filename().string());
+    }
+
+    //The closing "
+    advance();
+
+    const auto value = source.substr(start + 1, current - 1);
+    add_token(TokenType::STRING, value);
 }
 
 std::string Scanner::read_file(const fs::directory_iterator &path) {
@@ -59,7 +183,7 @@ std::string Scanner::read_file(const fs::directory_iterator &path) {
 
     if (input.is_open()) {
         while (std::getline(input, line)) {
-            text += line + 'n';
+            text += line + '\n';
         }
     }
     input.close();
@@ -68,8 +192,6 @@ std::string Scanner::read_file(const fs::directory_iterator &path) {
 }
 
 void Scanner::initialize_keywords() {
-    if (!keywords.empty()) return;
-
     keywords["def"] = TokenType::DEF;
     keywords["return"] = TokenType::RETURN;
     keywords["if"] = TokenType::IF;

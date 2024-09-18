@@ -9,8 +9,9 @@ include_directories(include)
 # static linking flags, so just the .exe is required to run
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
 
-add_executable(flint src/main.cpp
+add_executable(flint src/Flint.cpp
         src/Token.cpp
         include/Token.h
         src/Scanner.cpp
-        include/Scanner.h)
+        include/Scanner.h
+        include/Flint.h)

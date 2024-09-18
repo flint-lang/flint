@@ -24,18 +24,30 @@ class Scanner {
 public:
     explicit Scanner(const fs::directory_iterator &path);
 
-    std::vector<Token> scan_tokens();
+    std::vector<Token> &scan_tokens();
 
 private:
     void scan_token();
 
     [[nodiscard]] bool is_at_end() const;
 
+    [[nodiscard]] bool match(char expected);
+
     char advance();
+
+    [[nodiscard]] char peek() const;
+
+    [[nodiscard]] char peek_next() const;
 
     void add_token(TokenType type);
 
-    void add_token(TokenType type, std::string_view lexeme);
+    void add_token(TokenType type, const std::string& lexeme);
+
+    void identifier();
+
+    void number();
+
+    void string();
 
     static std::string read_file(const fs::directory_iterator &path);
 
