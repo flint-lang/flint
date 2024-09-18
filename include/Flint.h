@@ -5,9 +5,9 @@
 #include "Token.h"
 
 namespace Flint {
-    void error(uint32 line, std::string_view message, const std::string &file);
+    void error(uint32 line, const std::string &message, const std::string &file);
 
-    void error(const Token& token, std::string_view message);
+    void error(const Token& token, const std::string &message);
 
-    void report(uint32 line, std::string_view where, std::string_view message, const std::string &file);
+    void report(uint32 line, const std::string &where, const std::string &message, const std::string &file);
 }

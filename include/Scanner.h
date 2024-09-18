@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 class Scanner {
     static std::map<std::string, TokenType> keywords;
 
-    auto tokens = std::vector<Token>{};
+    std::vector<Token> tokens;
 
     int start = 0;
     int current = 0;

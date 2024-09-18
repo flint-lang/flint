@@ -50,6 +50,10 @@ public:
 
     [[nodiscard]] uint32 get_line() const;
 
+    [[nodiscard]] std::string type_string() const;
+
+    [[nodiscard]] std::string string() const;
+
     ~Token();
 
 };

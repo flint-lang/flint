@@ -1,14 +1,17 @@
 #include "Scanner.h"
 
 #include <fstream>
+#include <iostream>
 
 #include "Flint.h"
 
+std::map<std::string, TokenType> Scanner::keywords;
+
 Scanner::Scanner(const fs::directory_iterator &path) {
     if (keywords.empty()) initialize_keywords();
-    this->source = read_file(path);
-    this->file = path->path();
-    this->tokens = std::vector<TokenType>{};
+    source = read_file(path);
+    file = path->path();
+    tokens = std::vector<Token>{};
 }
 
 std::vector<Token> &Scanner::scan_tokens() {
@@ -17,14 +20,12 @@ std::vector<Token> &Scanner::scan_tokens() {
         scan_token();
     }
 
-    tokens.push_back(Token(TokenType::END_OF_FILE, "", file, line));
+    tokens.emplace_back(TokenType::END_OF_FILE, "", file, line);
     return tokens;
 }
 
 void Scanner::scan_token() {
-    char c = advance();
-
-    switch (c) {
+    switch (const char c = advance()) {
         case '(': {
             add_token(TokenType::LEFT_PAREN);
             break;
@@ -101,6 +102,8 @@ void Scanner::scan_token() {
                 number();
             else if (isalpha(c))
                 identifier();
+            else if (c == '\0')
+                std::cout << "Datei vorbei";
             else
                 Flint::error(line, "Unexpected token", file.filename().string());
         }
@@ -132,7 +135,7 @@ char Scanner::peek_next() const {
 void Scanner::add_token(const TokenType type) { add_token(type, ""); }
 
 void Scanner::add_token(const TokenType type, const std::string &lexeme) {
-    tokens.push_back(Token{type, lexeme, file, line});
+    tokens.emplace_back(type, lexeme, file, line);
 }
 
 void Scanner::identifier() {
@@ -192,6 +195,9 @@ std::string Scanner::read_file(const fs::directory_iterator &path) {
 }
 
 void Scanner::initialize_keywords() {
+
+    keywords = std::map<std::string, TokenType>{};
+
     keywords["def"] = TokenType::DEF;
     keywords["return"] = TokenType::RETURN;
     keywords["if"] = TokenType::IF;
