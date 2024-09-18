@@ -21,7 +21,7 @@ namespace Flint {
     }
 
     void report(uint32 line, const std::string &where, const std::string &message, const std::string &file) {
-        std::cerr << std::format("[{}] Line: {} {} Error: {}\n", file, line, where, message);
+        std::cerr << std::format("[{}] Line: {} Error {}: {}\n", file, line, where, message);
         std::cerr << "Abandoning..." << std::endl;
         exit(42);
     }

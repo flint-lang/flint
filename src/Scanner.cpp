@@ -102,15 +102,13 @@ void Scanner::scan_token() {
                 number();
             else if (isalpha(c))
                 identifier();
-            else if (c == '\0')
-                std::cout << "Datei vorbei";
             else
                 Flint::error(line, "Unexpected token", file.filename().string());
         }
     }
 }
 
-bool Scanner::is_at_end() const { return current > source.length(); }
+bool Scanner::is_at_end() const { return current > source.length() - 1; }
 
 bool Scanner::match(const char expected) {
     if (is_at_end()) return false;
@@ -141,10 +139,12 @@ void Scanner::add_token(const TokenType type, const std::string &lexeme) {
 void Scanner::identifier() {
     while(isalpha(peek())) advance();
 
-    const std::string text = source.substr(start, current);
-    const TokenType type = (keywords.contains(text)) ? keywords[text] : TokenType::IDENTIFIER;
+    if(const std::string text = source.substr(start, current - start); keywords.contains(text)) {
+        add_token(keywords[text]);
+    }else {
+        add_token(TokenType::IDENTIFIER, text);
+    }
 
-    add_token(type);
 }
 
 void Scanner::number() {
@@ -157,7 +157,7 @@ void Scanner::number() {
         while(isdigit(peek())) advance();
     }
 
-    add_token(TokenType::NUMBER, source.substr(start, current));
+    add_token(TokenType::NUMBER, source.substr(start, current - start));
 }
 
 void Scanner::string() {
@@ -173,7 +173,7 @@ void Scanner::string() {
     //The closing "
     advance();
 
-    const auto value = source.substr(start + 1, current - 1);
+    const auto value = source.substr(start + 1, current - start - 2);
     add_token(TokenType::STRING, value);
 }
 

@@ -8,6 +8,7 @@ namespace fs = std::filesystem;
 
 int main() {
     const auto current_path = fs::current_path();
+    int amount = 0;
 
     std::cout << "Current working directory: " << current_path << std::endl;
 
@@ -21,6 +22,7 @@ int main() {
                 for (auto tokens = sc.scan_tokens(); const auto& token : tokens) {
                     std::cout << token.string() << std::endl;
                 }
+                amount++;
             //}
         }
     } else {
@@ -28,8 +30,7 @@ int main() {
         exit(64);
     }
 
-    std::cout << "Press Enter to continue...";
-    std::cin.get();
+    std::cout << "Finished parsing of " << amount << " file" << (amount == 1 ? "" : "s");
 
     return 0;
 }
