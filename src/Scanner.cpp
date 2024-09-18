@@ -36,6 +36,7 @@ void Scanner::scan_token() {
             break;
         }
     }
+    // TODO: Finish method
 }
 
 bool Scanner::is_at_end() const { return current > source.length(); }
