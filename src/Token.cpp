@@ -1,41 +1,19 @@
 #include "Token.h"
 
 
-Token::Token(const TokenType type, const std::string &lexeme, const fs::path &file, const uint32 line) {
-    this->type = type;
-    this->lexeme = lexeme;
-    this->file = file;
-    this->line = line;
-}
-
-Token::~Token() = default;
-
-TokenType Token::get_type() const {
-    return type;
-}
-
-std::string Token::get_lexeme() const {
-    return lexeme;
-}
-
-fs::path Token::get_file() const {
-    return file;
-}
-
-uint32 Token::get_line() const {
-    return line;
-}
-
-std::string Token::type_string() const {
+std::string Token::type_string() const noexcept {
     switch (type) {
+        case TokenType::INDENT: return "INDENT";
+        case TokenType::DEDENT: return "DEDENT";
         case TokenType::LEFT_PAREN: return "LEFT_PAREN";
         case TokenType::RIGHT_PAREN: return "RIGHT_PAREN";
         case TokenType::COMMA: return "COMMA";
         case TokenType::DOT: return "DOT";
-        case TokenType::PLUS: return "PLUS";
         case TokenType::SEMICOLON: return "SEMICOLON";
         case TokenType::SLASH: return "SLASH";
-        case TokenType::STAR: return "STAR";
+        case TokenType::PERCENT: return "PERCENT";
+        case TokenType::QUESTION_MARK: return "QUESTION_MARK";
+        case TokenType::DOLLAR: return "DOLLAR";
         case TokenType::BANG: return "BANG";
         case TokenType::BANG_EQUAL: return "BANG_EQUAL";
         case TokenType::EQUAL: return "EQUAL";
@@ -44,8 +22,13 @@ std::string Token::type_string() const {
         case TokenType::LESS_EQUAL: return "LESS_EQUAL";
         case TokenType::MINUS: return "MINUS";
         case TokenType::ARROW: return "ARROW";
+        case TokenType::MINUS_EQUAL: return "MINUS_EQUAL";
         case TokenType::COLON: return "COLON";
         case TokenType::COLON_EQUAL: return "COLON_EQUAL";
+        case TokenType::PLUS: return "PLUS";
+        case TokenType::PLUS_EQUAL: return "PLUS_EQUAL";
+        case TokenType::STAR: return "STAR";
+        case TokenType::POWER: return "POWER";
         case TokenType::LEFT_CARET: return "LEFT_CARET";
         case TokenType::GREATER_EQUAL: return "GREATER_EQUAL";
         case TokenType::SWAP: return "SWAP";
@@ -69,7 +52,7 @@ std::string Token::type_string() const {
     }
 }
 
-std::string Token::string() const {
+std::string Token::string() const noexcept {
 
-    return file.filename().string() + " Line " + std::to_string(line) + " " + type_string() + " " + lexeme;
+    return file.filename().string() + " Line " + std::to_string(line) + " " + type_string() + " " + lexeme.data();
 }

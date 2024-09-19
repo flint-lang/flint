@@ -1,15 +1,18 @@
 #pragma once
 
-#include <any>
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <utility>
 
 namespace fs = std::filesystem;
 
 using uint32 = std::uint32_t;
 
 enum class TokenType {
+    // Scoping tokens
+    INDENT, DEDENT,
+
     //Single character tokens
     LEFT_PAREN, RIGHT_PAREN,
     COMMA, DOT, SEMICOLON, SLASH, PERCENT,
@@ -37,29 +40,27 @@ enum class TokenType {
     END_OF_FILE
 };
 
-class Token {
-    TokenType type;
-    std::string lexeme;
-    std::any literal;
-    fs::path file;
-    uint32 line;
+class Token final {
+    const TokenType type;
+    const std::string_view lexeme;
+    const fs::path file;
+    const uint32 line;
 
 public:
+    Token(const TokenType type, const std::string_view &lexeme, fs::path file, const uint32 line)
+    : type(type), lexeme(lexeme),file(std::move(file)), line(line) {}
 
-    Token(TokenType type, const std::string &lexeme, const fs::path &file, uint32 line);
+    [[nodiscard]] TokenType get_type() const noexcept { return type; }
 
-    [[nodiscard]] TokenType get_type() const;
+    [[nodiscard]] std::string get_lexeme() const noexcept { return std::string{lexeme.data()}; }
 
-    [[nodiscard]] std::string get_lexeme() const;
+    [[nodiscard]] fs::path get_file() const noexcept { return file; }
 
-    [[nodiscard]] fs::path get_file() const;
+    [[nodiscard]] uint32 get_line() const noexcept { return line; }
 
-    [[nodiscard]] uint32 get_line() const;
+    [[nodiscard]] std::string type_string() const noexcept;
 
-    [[nodiscard]] std::string type_string() const;
+    [[nodiscard]] std::string string() const noexcept;
 
-    [[nodiscard]] std::string string() const;
-
-    ~Token();
-
+    ~Token() = default;
 };

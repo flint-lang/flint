@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <map>
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@ class Scanner {
     static std::map<std::string, TokenType> keywords;
 
     std::vector<Token> tokens;
+    std::stack<int> indent_levels;
 
     int start = 0;
     int current = 0;
@@ -48,6 +50,8 @@ private:
     void number();
 
     void string();
+
+    void handle_indentation();
 
     static std::string read_file(const fs::directory_iterator &path);
 

@@ -224,18 +224,19 @@ std::string Scanner::read_file(const fs::directory_iterator &path) {
 }
 
 void Scanner::initialize_keywords() {
-    keywords = std::map<std::string, TokenType>{};
+    keywords = std::map<std::string, TokenType>{
+        {"def", TokenType::DEF},
+        {"return", TokenType::RETURN},
+        {"if", TokenType::IF},
+        {"else", TokenType::ELSE},
+        {"while", TokenType::WHILE},
+        {"do", TokenType::DO},
+        {"until", TokenType::UNTIL},
+        {"for", TokenType::FOR},
+        {"in", TokenType::IN},
+        {"as", TokenType::AS},
+        {"true", TokenType::TRUE},
+        {"false", TokenType::FALSE}
+    };
 
-    keywords["def"] = TokenType::DEF;
-    keywords["return"] = TokenType::RETURN;
-    keywords["if"] = TokenType::IF;
-    keywords["else"] = TokenType::ELSE;
-    keywords["while"] = TokenType::WHILE;
-    keywords["do"] = TokenType::DO;
-    keywords["until"] = TokenType::UNTIL;
-    keywords["for"] = TokenType::FOR;
-    keywords["in"] = TokenType::IN;
-    keywords["as"] = TokenType::AS;
-    keywords["true"] = TokenType::TRUE;
-    keywords["false"] = TokenType::FALSE;
 }
