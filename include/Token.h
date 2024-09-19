@@ -1,5 +1,6 @@
 #pragma once
 
+#include <any>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -11,14 +12,17 @@ using uint32 = std::uint32_t;
 enum class TokenType {
     //Single character tokens
     LEFT_PAREN, RIGHT_PAREN,
-    COMMA, DOT, PLUS, SEMICOLON, SLASH, STAR,
+    COMMA, DOT, SEMICOLON, SLASH, PERCENT,
+    QUESTION_MARK, DOLLAR,
 
     //One or two character tokens
     BANG, BANG_EQUAL,
     EQUAL, EQUAL_EQUAL,
     RIGHT_CARET, LESS_EQUAL,
-    MINUS, ARROW,
+    MINUS, ARROW, MINUS_EQUAL,
     COLON, COLON_EQUAL,
+    PLUS, PLUS_EQUAL,
+    STAR, POWER,
 
     //One or n character tokens
     LEFT_CARET, GREATER_EQUAL, SWAP,
@@ -36,10 +40,12 @@ enum class TokenType {
 class Token {
     TokenType type;
     std::string lexeme;
+    std::any literal;
     fs::path file;
     uint32 line;
 
 public:
+
     Token(TokenType type, const std::string &lexeme, const fs::path &file, uint32 line);
 
     [[nodiscard]] TokenType get_type() const;

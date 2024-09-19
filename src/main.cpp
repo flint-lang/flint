@@ -14,6 +14,7 @@ int main() {
 
     if (fs::directory_iterator(current_path) != fs::directory_iterator{}) {
         std::cout << "Files in working directory:" << std::endl;
+
         for(auto it = fs::directory_iterator(current_path); it != fs::directory_iterator{}; ++it)
             std::cout << "\t- " << it->path().filename().string() << std::endl;
         std::cout << std::endl;

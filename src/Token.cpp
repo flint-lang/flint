@@ -1,5 +1,6 @@
 #include "Token.h"
 
+
 Token::Token(const TokenType type, const std::string &lexeme, const fs::path &file, const uint32 line) {
     this->type = type;
     this->lexeme = lexeme;
@@ -69,5 +70,6 @@ std::string Token::type_string() const {
 }
 
 std::string Token::string() const {
+
     return file.filename().string() + " Line " + std::to_string(line) + " " + type_string() + " " + lexeme;
 }

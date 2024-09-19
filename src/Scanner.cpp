@@ -42,16 +42,28 @@ void Scanner::scan_token() {
             add_token(TokenType::DOT);
             break;
         }
-        case '+': {
-            add_token(TokenType::PLUS);
+        case '%': {
+            add_token(TokenType::PERCENT);
+            break;
+        }
+        case '?': {
+            add_token(TokenType::QUESTION_MARK);
+            break;
+        }
+        case '$': {
+            add_token(TokenType::DOLLAR);
             break;
         }
         case ';': {
             add_token(TokenType::SEMICOLON);
             break;
         }
+        case '+': {
+            add_token(match('=') ? TokenType::PLUS_EQUAL : TokenType::PLUS);
+            break;
+        }
         case '*': {
-            add_token(TokenType::STAR);
+            add_token(match('*') ? TokenType::POWER : TokenType::STAR);
             break;
         }
         case '!': {
@@ -67,7 +79,11 @@ void Scanner::scan_token() {
             break;
         }
         case '-': {
-            add_token(match('>') ? TokenType::ARROW : TokenType::MINUS);
+            if (match('>'))
+                add_token(TokenType::ARROW);
+            else if (match('='))
+                add_token(TokenType::MINUS_EQUAL);
+            add_token(TokenType::MINUS);
             break;
         }
         case ':': {
@@ -80,9 +96,23 @@ void Scanner::scan_token() {
             break;
         }
         case '/': {
-            if (match('/'))
+            if (match('/')) {
+                // Single-line comment
                 while (peek() != '\n' && !is_at_end()) advance();
-            add_token(TokenType::SLASH);
+            } else if (match('*')) {
+                // Multi-line comment
+                while (!(peek() == '*' && peek_next() == '/') && !is_at_end()) {
+                    if (peek() == '\n') line++;
+                    advance();
+                }
+
+                if (!is_at_end()) {
+                    advance(); // Consume '*'
+                    advance(); // Consume '/'
+                }
+            } else {
+                add_token(TokenType::SLASH);
+            }
             break;
         }
         case ' ':
@@ -98,12 +128,12 @@ void Scanner::scan_token() {
             break;
         }
         default: {
-            if(isdigit(c))
+            if (isdigit(c))
                 number();
             else if (isalpha(c))
                 identifier();
             else
-                Flint::error(line, "Unexpected token", file.filename().string());
+                Flint::error(line, source.substr(start, 20), "Unexpected token", file.filename().string());
         }
     }
 }
@@ -137,24 +167,23 @@ void Scanner::add_token(const TokenType type, const std::string &lexeme) {
 }
 
 void Scanner::identifier() {
-    while(isalpha(peek())) advance();
+    while (isalpha(peek())) advance();
 
-    if(const std::string text = source.substr(start, current - start); keywords.contains(text)) {
+    if (const std::string text = source.substr(start, current - start); keywords.contains(text)) {
         add_token(keywords[text]);
-    }else {
+    } else {
         add_token(TokenType::IDENTIFIER, text);
     }
-
 }
 
 void Scanner::number() {
-    while(isdigit(peek())) advance();
+    while (isdigit(peek())) advance();
 
-    if(peek() == '.' && isdigit(peek_next())) {
+    if (peek() == '.' && isdigit(peek_next())) {
         // Consume the .
         advance();
 
-        while(isdigit(peek())) advance();
+        while (isdigit(peek())) advance();
     }
 
     add_token(TokenType::NUMBER, source.substr(start, current - start));
@@ -195,7 +224,6 @@ std::string Scanner::read_file(const fs::directory_iterator &path) {
 }
 
 void Scanner::initialize_keywords() {
-
     keywords = std::map<std::string, TokenType>{};
 
     keywords["def"] = TokenType::DEF;
