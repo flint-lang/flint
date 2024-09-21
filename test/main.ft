@@ -1,0 +1,120 @@
+/**
+[FOR NOW]
+Calculates the number of digits of a given number
+Will be moved to the Integer class eventually
+
+Tests variables with the same name as a function too
+*/
+def digitCount(int num) -> int:
+    digitCount := 0;
+    while num != 0:
+        num /= 10;
+        digitCount += 1; // ++ not implemented yet
+    return digitCount;
+
+/**
+[FOR NOW]
+Eventually the functionality of the % operartor, but it is not implemented yet
+*/
+def mod(flint number, int rest) -> bool:
+    wholeNumber := (int)number;
+    number -= wholeNumber;
+    return (int)(number * 10) == rest;
+
+/**
+Claculates the cross sum power of the given number. If the pow is 1, it calculates the "normal" cross sum
+#param num: the number whose cross sum will be built
+#param pow: the number each digit of the cross sum will be powed with
+#return int: the result of the calculation
+*/
+def crossSumPow(int num, int pow) -> int:
+    crossSum := 0;
+    number := num;
+    while num / 10 > 1:
+        // int digitCount = Integer(number).digitCount;
+        int digitCount = digitCount(number);
+        digit = number / digitCount;
+        // Whoops. The execution order of the statement x * 10 ** y should be 
+        // pow before the multiplication, great for testing that. For now, 
+        // parenthesies are used
+        number -= digit * (10 ** (digitCount - 1));
+        crossSum += digit ** pow;
+    return crossSum;
+
+/**
+Determines whether the given number is a harshad number or not. It is considered a
+harshad number when it is divisable by its cross sum
+#param num: the number which gets checked
+#return bool: true if it is a harshad number, false if not
+*/
+def isHarshad(int num) -> bool:
+    return mod(num / crossSumPow(num, 1), 0);
+
+/**
+Determines wheter the given number is happy. A number is happy when its iterative
+cross sum ends at 1
+#param num: the number which gets checked
+#return bool: true if the number is happy, false if not
+*/
+def isHappy(int num) -> bool:
+    number := num;
+    while number != 1 and number != 4:
+        number = crossSumPow(number, 2);
+    return number == 1;
+
+/**
+Determines wheter the given number is a muenchhausen number. It is considered a 
+muenchhausen number when the cross sum of every digit powed by itself is the same
+as the number itself
+#param num: the number which gets checked
+#return bool: true if the number is a muenchhausen number, false if not
+*/
+def isMuenchhausen(int num) -> bool:
+    crossSum := 0;
+    number := num;
+    while num / 10 > 1:
+        int digitCount = Integer(number).digitCount;
+        digit = number / digitCount;
+        number -= digit * 10 ** (digitCount - 1);
+        crossSum += digit ** digit;
+    return crossSum == num;
+
+/**
+Determines wheter the given number is a mersenne number or not. It is, when its bit representation is filled with ones (ignoring leading zeroes). Because of how a binary number
+is constructed this condition also holds true if the number is one less than a multiple of 2.
+#param num: the number which gets checked
+#return bool: true if the number is a mersenne number, false if not
+*/
+def isMersenne(int num) -> bool:
+    return (num + 1) % 2 == 0; 
+
+/**
+Returns the maximum digit count the two given numbers. Could be done with encapsulated Min and Max methods too, but these do not exist (yet), so this is why the manual approach is used.
+#param num1: the first number whose digits length gets checked
+#param num2: the second number whose digit length gets checekd
+#return int: the longest digit length 
+*/
+def getMaxLength(int num1, num2) -> int:
+    length1 := digitCount(num1) + (num1 < 0 ? 1 : 0);
+    length2 := digitCount(num2) + (num2 < 0 ? 1 : 0);
+    return length1 > length2 ? length1 : length2;
+
+/**
+The programs main method
+*/
+def main():
+    startValue := -20;
+    endValue := 20;
+
+    numLength := getMaxLength(startValue, endValue);
+    for i := startValue; i < endValue; i++:
+        str happyText = isHappy(i) ? "happy" : "";
+        str harshadText = isHarshad(i) ? "Harshad" : "";
+        str muenchhausenText = isMuenchhausen(i) ? "Münchhausen" : "";
+        str mersenneText = isMersenne(i) ? "Mersenne" : "";
+
+        // This is a potential hurdle in the parser. The $ in front of the string states
+        // that variables are included in the string. After an variable inclusion with
+        // {} the length of the included string can be declared with the []. The {}[{}] syntax at the beginning might be weird though, as well as the Integer(i).toBinaryString()..
+        print($"{i}[{numLength}]: is a {happyText}[5] {harshadText}[7] " +
+            $"{muenchhausenText}[11] {mersenneText}[8] ({Integer(i).toBinaryString()})");
