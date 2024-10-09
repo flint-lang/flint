@@ -3,9 +3,8 @@
 pkgs.mkShellNoCC {
 	packages = with pkgs; [
 		llvm_18
-		cmake
+		clang_18
 		gcc
-		gpp
 	];
 	shellHook = ''
 		export DEV_ENVIRONMENT="flint"
@@ -15,7 +14,7 @@ pkgs.mkShellNoCC {
 		alias build-flint="$NIX_SHELL_PATH/flint/"
 		alias build-calculator="$NIX_SHELL_PATH/resources/calculator/build.sh"
 		alias run-calculator="$NIX_SHELL_PATH/resources/calculator/calculator"
-		alias build-tutorial="$NIX_SHELL_PATH/resources/tutorial/kaleidoscope/src/build.sh"
+		alias build-tutorial="$NIX_SHELL_PATH/resources/tutorial/kaleidoscope/src/builder.sh"
 		alias run-tutorial="$NIX_SHELL_PATH/resources/tutorial/kaleidoscope/output/main"
 	'';
 }
