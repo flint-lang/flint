@@ -4,6 +4,7 @@ pkgs.mkShellNoCC {
 	packages = with pkgs; [
 		llvm_18
 		clang_18
+		libcxx # c++ standard library
 		gcc
 	];
 	shellHook = ''
@@ -15,6 +16,6 @@ pkgs.mkShellNoCC {
 		alias build-calculator="$NIX_SHELL_PATH/resources/calculator/build.sh"
 		alias run-calculator="$NIX_SHELL_PATH/resources/calculator/calculator"
 		alias build-tutorial="$NIX_SHELL_PATH/resources/tutorial/kaleidoscope/src/builder.sh"
-		alias run-tutorial="$NIX_SHELL_PATH/resources/tutorial/kaleidoscope/output/main"
+		alias run-tutorial="$NIX_SHELL_PATH/resources/tutorial/kaleidoscope/src/main"
 	'';
 }
