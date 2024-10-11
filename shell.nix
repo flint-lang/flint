@@ -6,6 +6,7 @@ pkgs.mkShellNoCC {
 		clang_18
 		libcxx # c++ standard library
 		gcc
+		cmake
 	];
 	shellHook = ''
 		export DEV_ENVIRONMENT="flint"
