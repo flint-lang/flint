@@ -29,7 +29,8 @@ $RepoOwner = "flint-lang"
 $RepoName  = "flintc"
 $FlintRoot = Join-Path $env:LOCALAPPDATA "Flint"
 $VersionsDir = Join-Path $FlintRoot "Versions"
-$WrapperPath = Join-Path $FlintRoot "flintc.cmd"
+$FlintcLink = Join-Path $FlintRoot "flintc.exe"
+$FlsLink = Join-Path $FlintRoot "fls.exe"
 $ActiveVersionFile = Join-Path $FlintRoot "active_version"
 
 function Write-ErrExit($msg, [int]$code = 1) {
@@ -54,19 +55,65 @@ function Get-ReleaseObjectByTag([string]$tag) {
     }
 }
 
-function Find-WindowsExeAsset($releaseObj) {
+function Find-WindowsExeAsset($releaseObj, $exeName) {
     if (-not $releaseObj) { return $null }
     foreach ($asset in $releaseObj.assets) {
         $name = $asset.name.ToLower()
-        # match exact exe or files that contain 'windows' and end with exe
-        if ($name -eq "flintc.exe" -or ($name -like "*windows*.exe") -or ($name -like "*-win*.exe")) {
+        $searchName = $exeName.ToLower()
+        # match exact exe or files that contain 'windows' and the exe name
+        if ($name -eq $searchName -or ($name -like "*windows*$searchName") -or ($name -like "*-win*$searchName")) {
             return $asset.browser_download_url
         }
     }
-    # fallback: if only one exe exists, return it
-    $exeAssets = $releaseObj.assets | Where-Object { $_.name -like "*.exe" }
+    # fallback: if asset with exact name exists, return it
+    $exeAssets = $releaseObj.assets | Where-Object { $_.name.ToLower() -eq $exeName.ToLower() }
     if ($exeAssets.Count -eq 1) { return $exeAssets[0].browser_download_url }
     return $null
+}
+
+function Download-Binary($binaryName, $assetUrl, $targetDir, $resolvedTag) {
+    $exePath = Join-Path $targetDir $binaryName
+    
+    if ((Test-Path $exePath) -and (-not $Force)) {
+        Write-Host "$binaryName for version '$resolvedTag' already exists at $exePath. Use -Force to re-download."
+        return $exePath
+    } else {
+        Write-Host "Downloading $binaryName ($resolvedTag) ..."
+        try {
+            # GitHub may require a User-Agent header
+            $headers = @{ "User-Agent" = "flint_installer" }
+            Invoke-WebRequest -Uri $assetUrl -OutFile $exePath -Headers $headers -UseBasicParsing
+        } catch {
+            Write-Host "Warning: Download failed for $binaryName : $($_.Exception.Message)" -ForegroundColor Yellow
+            return $null
+        }
+
+        # Ensure executable bit and existence
+        if (-not (Test-Path $exePath)) {
+            Write-Host "Warning: $binaryName file missing after download." -ForegroundColor Yellow
+            return $null
+        } else {
+            Write-Host "Downloaded to $exePath"
+            return $exePath
+        }
+    }
+}
+
+function Create-HardLink($sourcePath, $linkPath, $binaryName) {
+    # Remove existing link/file if present
+    if (Test-Path $linkPath) {
+        Remove-Item $linkPath -Force
+        Write-Host "Removed existing $binaryName at $linkPath"
+    }
+
+    try {
+        New-Item -ItemType HardLink -Path $linkPath -Target $sourcePath -Force -ErrorAction Stop | Out-Null
+        Write-Host "Created hard link for $binaryName at $linkPath" -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Host ("Failed to create hard link for {0}: {1}" -f $binaryName, $_.Exception.Message) -ForegroundColor Yellow
+        return $false
+    }
 }
 
 # create directories
@@ -83,7 +130,8 @@ if ($Version -eq "latest") {
             # take the first element's tag_name
             $resolvedTag = ($releases | Select-Object -First 1).tag_name
             Write-Host "Resolved latest tag: $resolvedTag"
-            $assetUrl = "https://github.com/$RepoOwner/$RepoName/releases/download/$resolvedTag/flintc.exe"
+            $assetUrlFlintc = "https://github.com/$RepoOwner/$RepoName/releases/download/$resolvedTag/flintc.exe"
+            $assetUrlFls = "https://github.com/$RepoOwner/$RepoName/releases/download/$resolvedTag/fls.exe"
             $Version = $resolvedTag
         } else {
             Write-Host "No releases returned from list endpoint." -ForegroundColor Yellow
@@ -99,92 +147,71 @@ if ($Version -eq "latest") {
     $release = Get-ReleaseObjectByTag $Version
 }
 
-if (-not $assetUrl) {
+if (-not $assetUrlFlintc -or -not $assetUrlFls) {
     if (-not $release) {
         Write-Host "Could not find release for '$Version' via GitHub API." -ForegroundColor Yellow
         if ($Version -ne "latest") {
             # attempt to download by naive URL style (fallback)
             Write-Host "Attempting naive URL download path for $Version ..."
-            $assetUrl = "https://github.com/$RepoOwner/$RepoName/releases/download/$Version/flintc.exe"
+            $assetUrlFlintc = "https://github.com/$RepoOwner/$RepoName/releases/download/$Version/flintc.exe"
+            $assetUrlFls = "https://github.com/$RepoOwner/$RepoName/releases/download/$Version/fls.exe"
         } else {
             Write-ErrExit "No release found and cannot continue."
         }
     } else {
-        # if we have a release object (from tags endpoint), try to find explicit exe asset first
+        # if we have a release object (from tags endpoint), try to find explicit exe assets
         $resolvedTag = $release.tag_name
-        $assetUrl = Find-WindowsExeAsset $release
-        if (-not $assetUrl) {
-            Write-Host "No Windows .exe asset found automatically. Trying a likely name..."
-            $assetUrl = "https://github.com/$RepoOwner/$RepoName/releases/download/$resolvedTag/flintc.exe"
+        $assetUrlFlintc = Find-WindowsExeAsset $release "flintc.exe"
+        $assetUrlFls = Find-WindowsExeAsset $release "fls.exe"
+        
+        if (-not $assetUrlFlintc) {
+            Write-Host "No Windows .exe asset found automatically for flintc. Trying a likely name..."
+            $assetUrlFlintc = "https://github.com/$RepoOwner/$RepoName/releases/download/$resolvedTag/flintc.exe"
         }
+        
+        if (-not $assetUrlFls) {
+            Write-Host "No Windows .exe asset found automatically for fls. Trying a likely name..."
+            $assetUrlFls = "https://github.com/$RepoOwner/$RepoName/releases/download/$resolvedTag/fls.exe"
+        }
+        
         $Version = $resolvedTag  # normalize version to the canonical tag
     }
 }
 
 $targetDir = Join-Path $VersionsDir $Version
 New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
-$exePath = Join-Path $targetDir "flintc.exe"
 
-if ((Test-Path $exePath) -and (-not $Force)) {
-    Write-Host "flintc.exe for version '$Version' already exists at $exePath. Use -Force to re-download."
-} else {
-    Write-Host "Downloading flintc ($Version) ..."
-    try {
-        # GitHub may require a User-Agent header
-        $headers = @{ "User-Agent" = "flint_installer" }
-        Invoke-WebRequest -Uri $assetUrl -OutFile $exePath -Headers $headers -UseBasicParsing
-    } catch {
-        Write-ErrExit "Download failed: $($_.Exception.Message)"
-    }
+# Download both binaries
+$flintcPath = Download-Binary "flintc.exe" $assetUrlFlintc $targetDir $Version
+$flsPath = Download-Binary "fls.exe" $assetUrlFls $targetDir $Version
 
-    # Ensure executable bit and existence
-    if (-not (Test-Path $exePath)) {
-        Write-ErrExit "downloaded file missing after download."
-    } else {
-        Write-Host "Downloaded to $exePath"
-    }
+# Check if at least one binary was downloaded successfully
+if (-not $flintcPath -and -not $flsPath) {
+    Write-ErrExit "Failed to download both binaries. Installation cannot continue."
 }
 
-# Create wrapper (flintc.cmd) in $FlintRoot
-$wrapperText = @"
-@echo off
-REM flintc wrapper - chooses project pinned > user pinned > newest cached
-setlocal
+# Create links for both binaries
+if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
 
-set FLINT_ROOT=%LOCALAPPDATA%\Flint
-set VERSIONS_DIR=%FLINT_ROOT%\versions
-set PROJECT_PIN_FILE=%CD%\.flint\version
-set USER_PIN_FILE=%FLINT_ROOT%\active_version
+# Persist active version file
+$Version | Out-File -FilePath $ActiveVersionFile -Encoding ascii -Force -NoNewline
 
-REM 1) project pinned
-if exist "%PROJECT_PIN_FILE%" (
-    set /p VER=<"%PROJECT_PIN_FILE%"
-) else if exist "%USER_PIN_FILE%" (
-    set /p VER=<"%USER_PIN_FILE%"
-) else (
-    REM pick newest directory under versions
-    for /f "delims=" %%v in ('dir /b /ad "%VERSIONS_DIR%" ^| sort') do set VER=%%v
-)
+# Create hard links for both binaries (so `flintc.exe` and `fls.exe` are available under $FlintRoot)
+$linkSuccessCount = 0
 
-if "%VER%"=="" (
-    echo No flint version found in %FLINT_ROOT%\versions. Please run installer.
-    exit /b 2
-)
+if ($flintcPath) {
+    $sourceFlintc = $flintcPath
+    if (Create-HardLink $sourceFlintc $FlintcLink "flintc") { $linkSuccessCount++ }
+}
 
-set EXE="%FLINT_ROOT%\versions\%VER%\flintc.exe"
-if not exist %EXE% (
-    echo Requested flint version %VER% not present at %EXE%
-    exit /b 3
-)
+if ($flsPath) {
+    $sourceFls = $flsPath
+    if (Create-HardLink $sourceFls $FlsLink "fls") { $linkSuccessCount++ }
+}
 
-REM Execute the real binary and forward arguments
-"%FLINT_ROOT%\versions\%VER%\flintc.exe" %*
-endlocal
-"@
-
-# write wrapper
-$wrapperText | Out-File -FilePath $WrapperPath -Encoding ascii -Force
-Write-Host "Wrapper created at $WrapperPath"
+if ($linkSuccessCount -eq 0) {
+    Write-ErrExit "Failed to create any hard links. Installation incomplete."
+}
 
 # Add $FlintRoot to User PATH if missing
 function Add-ToUserPathIfMissing($dir) {
@@ -205,7 +232,13 @@ function Add-ToUserPathIfMissing($dir) {
 
 Add-ToUserPathIfMissing $FlintRoot
 
-Write-Host "Installation complete. You can now run 'flintc' from a new terminal (or use full path to the wrapper)."
-Write-Host "To pin a version per-project, create a file '.flint\\version' containing the tag (e.g. $Version) in your project root."
+Write-Host "`nInstallation complete!" -ForegroundColor Green
+if ($flintcPath) {
+    Write-Host "- flintc is available via 'flintc' command"
+}
+if ($flsPath) {
+    Write-Host "- fls is available via 'fls' command"
+}
+Write-Host "`nYou may need to restart your terminal for PATH changes to take effect."
+Write-Host "To pin a version per-project, create a file '.flint\version' containing the tag (e.g. $Version) in your project root."
 Write-Host "To set a user default active version, write the version tag to: $ActiveVersionFile"
-
