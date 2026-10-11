@@ -1,7 +1,7 @@
 const std = @import("std");
 const clap = @import("clap");
 
-pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Iterator) !void {
+pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Iterator) !u8 {
     _ = gpa;
 
     const iter: std.process.Args.Iterator = iter_start;
@@ -13,4 +13,5 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
     const stderr = &stderr_writer.interface;
     _ = stdout;
     _ = stderr;
+    return 0;
 }

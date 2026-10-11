@@ -9,7 +9,7 @@ const params = clap.parseParamsComptime(
     \\<dir>         Initialize the Flint project in the given directory
 );
 
-pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Iterator) !void {
+pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Iterator) !u8 {
     var iter: std.process.Args.Iterator = iter_start;
 
     var stdout_writer = std.Io.File.stdout().writer(io, &.{});
@@ -26,7 +26,7 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
     defer res.deinit();
     if (res.args.help != 0) {
         try printHelp(stdout);
-        return;
+        return 0;
     }
 
     const root: std.Io.Dir =
@@ -83,6 +83,7 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
         },
         else => return err,
     }
+    return 0;
 }
 
 fn printHelp(writer: *std.Io.Writer) !void {
