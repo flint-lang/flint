@@ -95,23 +95,17 @@ fn printHelp(writer: *std.Io.Writer) !void {
     });
     try writer.writeAll(
         \\
+        \\  You can use '-h' or '--help' on any subcommand to get additional information
+        \\
         \\Available commands are:
         \\  help            Print this help message
         \\  init            Initialize a new empty Flint project in the current working directory
-        \\                  (use '-h' or '--help' for more information)
         \\  fetch           Fetch all external dependencies described in the 'flint.toml' file
         \\  build           Build the Flint project from the information found in the '[build]' section of the
         \\                  'flint.toml' file
         \\  core            Manage installations of Core parts of Flint, like the compiler or lsp
-        \\                  (use '-h', '--help' or 'help' for more information)
-        \\  fip             Manage Flint Interop Modules like 'fip-c'
-        \\                  (use '-h', '--help' or 'help' for more information)
-        \\    install
-        \\    update
-        \\    remove
-        \\    list
-        \\  target          Manage target toolchains files
-        \\                  (use '-h', '--help' or 'help' for more information)
+        \\  fip             Manage installations of Flint Interop Modules like 'fip-c'
+        \\  target          Manage target toolchains installations
         \\    install
         \\    remove
         \\    list

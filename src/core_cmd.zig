@@ -87,15 +87,14 @@ fn printHelp(writer: *std.Io.Writer) !void {
         \\  flintc          The compiler itself
         \\  fls             The language server
         \\  Core            Documentation stubs for all Core modules of this version
-        \\  Std             The standard library for this version
         \\
         \\Available commands are:
-        \\  help            Print this help message
-        \\  list            List all available and installed versions of Flint
-        \\  install         Install a specific version of Flint
-        \\  update          Check for updates of Flint
-        \\  remove          Remove a specific version of Flint
-        \\  switch          Use specific version of Flint
+        \\  help                Print this help message
+        \\  list                List all available and installed versions of Flint
+        \\  install <version>   Install a specific version of Flint
+        \\  update <version>    Check for updates of Flint
+        \\  remove <version>    Remove a specific version of Flint
+        \\  switch <version>    Use specific version of Flint
         \\
     );
     try writer.flush();
