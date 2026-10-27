@@ -1,0 +1,438 @@
+.{
+    .toolchain = .{
+        .@"v0.4.2-core" = .{
+            .std = null,
+            .fip = "v0.4.1",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.2-core/flintc",
+                        .shasum = "56525e00c1375b5fb9a07859419cc95027f8e978517353f7f184bbe6383ebe5e",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.2-core/fls",
+                        .shasum = "47aea784e802a2e1f389f80b2c3d882cbf4cfc86d7195e95e4f5f99b4aff6771",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.2-core/flintc.exe",
+                        .shasum = "ddf2608c111aeebbb1b5b0ef332af6689c0421eb3490ece6294d991c458df907",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.2-core/fls.exe",
+                        .shasum = "fdcd3c16e729e31fbf4bfca2655ca95f6599dce922c8bfa9311e9fdc045471ac",
+                    },
+                },
+            },
+        },
+        .@"v0.4.1-core" = .{
+            .std = null,
+            .fip = "v0.4.1",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.1-core/flintc",
+                        .shasum = "ef6108d15f242fd469b6b9528dc9d4be4ebd946574514c9137e33783fbfa5943",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.1-core/fls",
+                        .shasum = "7132224da447be86cb4908f88d175f420bb5c69b35ee24ed1db5a3dc993525bd",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.1-core/flintc.exe",
+                        .shasum = "4d2fe6180e2d10ef17347de23e84aa4b7e6050f1d4a16b6b947744b9a2fef100",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.1-core/fls.exe",
+                        .shasum = "0873fd1856ff289590f7d079e31fe2fd4bd23f006dba09b8a1ef2823c8ec3723",
+                    },
+                },
+            },
+        },
+        .@"v0.4.0-core" = .{
+            .std = null,
+            .fip = "v0.4.0",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.0-core/flintc",
+                        .shasum = "0223dbff99d2ab08741a60391caee160e1c5ad35ccc0c1d056f3102a05f6e6d8",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.0-core/fls",
+                        .shasum = "af23ecc996aebaa0bed9dd2dbcf27d13f3f8feaf9cd6ef2b5d02654888276023",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.0-core/flintc.exe",
+                        .shasum = "280bab7b9d6a0cd560cb8090c570e5c6ae595a3aa43ba69e49a59ab6883806c5",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.4.0-core/fls.exe",
+                        .shasum = "d1017e9a47e4f48391a9f63c092563c224332d04ca32b2e429b626b3d77e8826",
+                    },
+                },
+            },
+        },
+        .@"v0.3.5-core" = .{
+            .std = null,
+            .fip = "v0.3.2",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.5-core/flintc",
+                        .shasum = "9d6ac80c28a03caf9ce46a83601c1313b3b3adedc1e61997f30918470182a1b0",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.5-core/fls",
+                        .shasum = "75fcedf31ccacd26733ed5a5ae19b6ab410ce3aa256bcf79ed8678d8362897a4",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.5-core/flintc.exe",
+                        .shasum = "635b2641ee2d7d37330364caac336556e4a5fb0ed59d9c1252d0c190f14d49db",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.5-core/fls.exe",
+                        .shasum = "2aa33af514ee867f375e0661fcc779b9f73cb72af93f01b5b4a9fd1aeecd27c6",
+                    },
+                },
+            },
+        },
+        .@"v0.3.4-core" = .{
+            .std = null,
+            .fip = "v0.3.2",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.4-core/flintc",
+                        .shasum = "e6eb2731a20d2af7678bc8f166adf1c3a8b4c25d7de822b547e898bdef1d1ce9",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.4-core/fls",
+                        .shasum = "a24899d574762ec4e6f1e995d2ce836e8600fa482cf8523487cb76d3b0f42342",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.4-core/flintc.exe",
+                        .shasum = "c80336d6e9dabab5afb2081dd00c1d75657ff7d92fe8d606170dba12f245f505",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.4-core/fls.exe",
+                        .shasum = "9af21d11a24fe9bc2ecbc33bb9777ce18a14e7bd47a4200d0959801d93aba57e",
+                    },
+                },
+            },
+        },
+        .@"v0.3.3-core" = .{
+            .std = null,
+            .fip = "v0.3.2",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.3-core/flintc",
+                        .shasum = "af5273ed20ed142649ecd587270b99bab0842ca2cba77640a0e90a0885db429d",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.3-core/fls",
+                        .shasum = "06556c8712a45333a71473f72a6c59360d0ea61af5a652d904bb7e5fa48785e4",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.3-core/flintc.exe",
+                        .shasum = "b5c24add0cfdc37eb3b58e485d39a0e37818e1a234ee52cbb747d0cb2178a4b3",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.3-core/fls.exe",
+                        .shasum = "9e751ba2fc8c549fb1089fe44b52847d7217d21dd44ac82830508ab612b8f601",
+                    },
+                },
+            },
+        },
+        .@"v0.3.2-core" = .{
+            .std = null,
+            .fip = "v0.3.2",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.2-core/flintc",
+                        .shasum = "75ce5ebc164cabf192d8228272803f281011d6c29521f999f4538fb349797848",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.2-core/fls",
+                        .shasum = "ec911726f6d746dbbefdd130d7c8923a226596cc45b3918f681c4c7c872ccc79",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.2-core/flintc.exe",
+                        .shasum = "11a6d9f7d53490fc4abe6b84227e50d5593f9765a056094ee184317cee0b695f",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.2-core/fls.exe",
+                        .shasum = "65e113234d3423e5815de29d28121017a9a6e76727ebb934553c91fa28a18b3b",
+                    },
+                },
+            },
+        },
+        .@"v0.3.1-core" = .{
+            .std = null,
+            .fip = "v0.3.0",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.1-core/flintc",
+                        .shasum = "2322bb48f3bed10e314295ed78c70bd2e19be84a704ae6a5221562cc9ac62d25",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.1-core/fls",
+                        .shasum = "8fcc384546f0fc0bc27e9d6d773d6fc944a8a32621c1f10a03ca892d7f38b018",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.1-core/flintc.exe",
+                        .shasum = "d8fafec629c83f4faf1e53c2071d6a40e520badc485f39bd4034cbd3a2c7fcf3",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.1-core/fls.exe",
+                        .shasum = "fe6a0527415b330f43eefca540128842c5801840416781fbbc74da503a64418c",
+                    },
+                },
+            },
+        },
+        .@"v0.3.0-core" = .{
+            .std = null,
+            .fip = "v0.3.0",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.0-core/flintc",
+                        .shasum = "525b680c020c5737caea9c2bc3b95410c9c19eee34505b4adbf42ff963fccce3",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.0-core/fls",
+                        .shasum = "f05cc6030ef3ac6498fe70b3478272833a15b7fdb1d343dd5c1f79a2baf807cc",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.0-core/flintc.exe",
+                        .shasum = "d628708df5bacef817338609235d07880e150bff07792089ad78234b393eb503",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.3.0-core/fls.exe",
+                        .shasum = "63951fbac7b3c419eb5075aa11a44b866e5fc54a062a1d3751019e8fd4fdcee9",
+                    },
+                },
+            },
+        },
+        .@"v0.2.5-core" = .{
+            .std = null,
+            .fip = "v0.2.5",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.5-core/flintc",
+                        .shasum = "e402887837f8749ac67d03f5c7d38c3408863f53a28409631738e8f1823f1cef",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.5-core/fls",
+                        .shasum = "82c5a51ab9ec5f12c441b08729486294acc130b79585f8863152fa6f56771b8c",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.5-core/flintc.exe",
+                        .shasum = "60c61b65713597efa193ed074aa1910f0f3f341fad0557a05ed49607b9155e29",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.5-core/fls.exe",
+                        .shasum = "053fb16436959dedc62b12ad5d185dd51c80999da1cc16a209c2500c9799666d",
+                    },
+                },
+            },
+        },
+        .@"v0.2.4-core" = .{
+            .std = null,
+            .fip = "v0.2.3",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.4-core/flintc",
+                        .shasum = "b55ba1839a241017d9404fd1e5ee8eafb15ccaa2a37a08bc590f8f6cf9797c48",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.4-core/fls",
+                        .shasum = "8068614c8c871ac39ba497a5ae4af40eab10b07bd64d6af83f851fd6dc10beda",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.4-core/flintc.exe",
+                        .shasum = "8c725676a908dccc5c806c31e66e67979888fea70a91723d6151c1604ac907ac",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.4-core/fls.exe",
+                        .shasum = "a2a6b89b09c67504233df988b13548221ca2be1f1e140ccfb84673edc7a20a6f",
+                    },
+                },
+            },
+        },
+        .@"v0.2.3-core" = .{
+            .std = null,
+            .fip = "v0.2.3",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.3-core/flintc",
+                        .shasum = "01222479d013400e9ea3fc068f449b6498d1c5c1f4dd5836989fe468a7340ad0",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.3-core/fls",
+                        .shasum = "c8f6633b2be1603748e54c18d900190606d21a54b526027bad2e00c368b32d30",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.3-core/flintc.exe",
+                        .shasum = "dc109e4bfb752c7efab37e56dfa8eeb0d1fab4149bd5bd383d6e697219be99d2",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.3-core/fls.exe",
+                        .shasum = "2737bc2e523de674276062563e42b9bcb6321729738626b15286d781e3b7f98f",
+                    },
+                },
+            },
+        },
+        // 0.2.2 is the oldest version to contain a language server, this is why its the oldest version in the registry
+        .@"v0.2.2-core" = .{
+            .std = null,
+            .fip = "v0.2.1",
+            .artifacts = .{
+                .@"x86_64-linux" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.2-core/flintc",
+                        .shasum = "a091fd15a2bbc84942ea5f9eae8a89c5958f969619deb8c37d9b9a49ff5833b6",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.2-core/fls",
+                        .shasum = "3d6c49e388c853e2bd227e85884a071b04c94be1763d098f164f445c061d807c",
+                    },
+                },
+                .@"x86_64-windows" = .{
+                    .flintc = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.2-core/flintc.exe",
+                        .shasum = "7c0dd81a9b29990502b98f3debfdfa7af37c337891ca49d8763f0b039fb4fb29",
+                    },
+                    .fls = .{
+                        .url = "https://github.com/flint-lang/flintc/releases/download/v0.2.2-core/fls.exe",
+                        .shasum = "46a9a18dfbb3ad3541998754f5edf1e0d0957a64fdbd2a9515012bf38027a823",
+                    },
+                },
+            },
+        },
+    },
+    .fip = .{
+        .@"v0.4.1" = .{
+            .c = .{
+                .@"x86_64-linux" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.4.1/fip-c",
+                    .shasum = "90f965f4636b25b8c06263e93f37726f95f433d6795c02a7dfe9edb5a1e15a79",
+                },
+                .@"x86_64-windows" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.4.1/fip-c.exe",
+                    .shasum = "8a87f0c0cfd4cdef3635fd5f813f519043f2931233ffb351d2732bc5c5c8a5f1",
+                },
+            },
+        },
+        .@"v0.4.0" = .{
+            .c = .{
+                .@"x86_64-linux" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.4.0/fip-c",
+                    .shasum = "9a73fe83989e18ba96523cf3bb3176eb27fa8f4fc5d40b8359d7116a7e889cd2",
+                },
+                .@"x86_64-windows" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.4.0/fip-c.exe",
+                    .shasum = "7afe24f3845cfbb1f8fc2550acbfe8fd6876e4bdc470bf1faf37695c64b57832",
+                },
+            },
+        },
+        .@"v0.3.2" = .{
+            .c = .{
+                .@"x86_64-linux" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.3.2/fip-c",
+                    .shasum = "587441dcba543e44ed01c3435f8b7c7f6b5e07e438a73ceab0a331e140f67faa",
+                },
+                .@"x86_64-windows" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.3.2/fip-c.exe",
+                    .shasum = "f80ad34799dca4f57e1da3198f3a287caa78390a25a87478a384509313bcc4ee",
+                },
+            },
+        },
+        .@"v0.3.0" = .{
+            .c = .{
+                .@"x86_64-linux" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.3.0/fip-c",
+                    .shasum = "11ce493a96829a5139a646707eed31e0f004fbd0e381dee6911139254f7eb844",
+                },
+                .@"x86_64-windows" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.3.0/fip-c.exe",
+                    .shasum = "22696d944864f85d5fb9b0a4b1ff0680deb15433376917c9bd58e8c679db4449",
+                },
+            },
+        },
+        .@"v0.2.5" = .{
+            .c = .{
+                .@"x86_64-linux" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.2.5/fip-c",
+                    .shasum = "841991d5c1c406c517afe7059b3843a2ba9a62515b88d036521a5f948ee70341",
+                },
+                .@"x86_64-windows" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.2.5/fip-c.exe",
+                    .shasum = "eb62d9b54456cc94d09d0bb7c03ec1a2ef8ab5d6bccca297a8c24ea0f15b916a",
+                },
+            },
+        },
+        .@"v0.2.3" = .{
+            .c = .{
+                .@"x86_64-linux" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.2.3/fip-c",
+                    .shasum = "12a8cb85418c1c815f9685520f841820eb9bbba9dff294b99510717911740a7a",
+                },
+                .@"x86_64-windows" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.2.3/fip-c.exe",
+                    .shasum = "ddd6fbf06e66d55938cad8b97c948202b69aad8c998570249dac926240a1ecc2",
+                },
+            },
+        },
+        .@"v0.2.1" = .{
+            .c = .{
+                .@"x86_64-linux" = .{
+                    .revision = null, // No revisions yet, revisions start with 0.4.3+
+                    .url = "https://github.com/flint-lang/fip/releases/download/v0.2.1/fip-c",
+                    .shasum = "cf9d205d82c5b506103a9667ec693f4be0eac0bdd3d1f98f745498df955212b7",
+                },
+            },
+        },
+    },
+}

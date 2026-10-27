@@ -100,7 +100,7 @@ fn printHelp(writer: *std.Io.Writer) !void {
         \\Usage: flint init [<dir>]
         \\
         \\  Initializes a new Flint project in the given directory. If no directory is provided a new project
-        \\  will be created in the curent working directory instead.
+        \\  will be created in the current working directory instead.
         \\
         \\Options:
         \\
