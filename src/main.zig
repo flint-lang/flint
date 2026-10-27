@@ -4,11 +4,11 @@ const clap = @import("clap");
 const defines = @import("defines");
 
 const init_cmd = @import("init_cmd.zig");
-const fetch_cmd = @import("init_cmd.zig");
-const build_cmd = @import("init_cmd.zig");
-const core_cmd = @import("init_cmd.zig");
-const fip_cmd = @import("init_cmd.zig");
-const target_cmd = @import("init_cmd.zig");
+const fetch_cmd = @import("fetch_cmd.zig");
+const build_cmd = @import("build_cmd.zig");
+const core_cmd = @import("core_cmd.zig");
+const fip_cmd = @import("fip_cmd.zig");
+const target_cmd = @import("target_cmd.zig");
 
 const SubCommands = enum {
     help,
@@ -98,21 +98,20 @@ fn printHelp(writer: *std.Io.Writer) !void {
         \\Available commands are:
         \\  help            Print this help message
         \\  init            Initialize a new empty Flint project in the current working directory
+        \\                  (use '-h' or '--help' for more information)
         \\  fetch           Fetch all external dependencies described in the 'flint.toml' file
         \\  build           Build the Flint project from the information found in the '[build]' section of the
         \\                  'flint.toml' file
-        \\  core            Manage Core functionality of Flint, like the compiler or lsp
-        \\    install       Install a specific version of Flint     ('flintc', 'fls', etc)
-        \\    update        Check for updates of Flint              ('flintc', 'fls', etc)
-        \\    remove        Remove a specific version of Flint      ('flintc', 'fls', etc)
-        \\    list          List all installed versions of Flint    ('flintc', 'fls', etc)
-        \\    use           Use specific version of Flint           ('flintc', 'fls', etc)
+        \\  core            Manage installations of Core parts of Flint, like the compiler or lsp
+        \\                  (use '-h', '--help' or 'help' for more information)
         \\  fip             Manage Flint Interop Modules like 'fip-c'
+        \\                  (use '-h', '--help' or 'help' for more information)
         \\    install
         \\    update
         \\    remove
         \\    list
         \\  target          Manage target toolchains files
+        \\                  (use '-h', '--help' or 'help' for more information)
         \\    install
         \\    remove
         \\    list
