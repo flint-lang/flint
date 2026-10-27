@@ -68,15 +68,15 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
             return 1;
         },
         .update => {
-            std.log.debug("'list' command not implemented yet", .{});
+            std.log.debug("'update' command not implemented yet", .{});
             return 1;
         },
         .remove => {
-            std.log.debug("'list' command not implemented yet", .{});
+            std.log.debug("'remove' command not implemented yet", .{});
             return 1;
         },
         .@"switch" => {
-            std.log.debug("'list' command not implemented yet", .{});
+            std.log.debug("'switch' command not implemented yet", .{});
             return 1;
         },
     };
