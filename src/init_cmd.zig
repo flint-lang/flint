@@ -31,7 +31,13 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
 
     const root: std.Io.Dir =
         if (res.positionals[0]) |dir|
-            try std.Io.Dir.cwd().openDir(io, dir, .{})
+            std.Io.Dir.cwd().openDir(io, dir, .{}) catch |err| switch (err) {
+                error.FileNotFound => {
+                    std.log.err("The passed-in directory '{s}' does not exist. Use '--help' for more information", .{dir});
+                    return 1;
+                },
+                else => return err,
+            }
         else
             std.Io.Dir.cwd();
     if (root.openFile(io, "flint.toml", .{})) |file| {
@@ -63,7 +69,10 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
         else => return err,
     }
 
-    try root.createDir(io, "src", .default_dir);
+    root.createDir(io, "src", .default_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
     if (root.openFile(io, "src/main.ft", .{})) |file| {
         // Don't change the file if it already exists
         file.close(io);
