@@ -1,7 +1,6 @@
 .{
     .toolchain = .{
         .@"v0.4.2-core" = .{
-            .std = null,
             .fip = "v0.4.1",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -27,7 +26,6 @@
             },
         },
         .@"v0.4.1-core" = .{
-            .std = null,
             .fip = "v0.4.1",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -53,7 +51,6 @@
             },
         },
         .@"v0.4.0-core" = .{
-            .std = null,
             .fip = "v0.4.0",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -79,7 +76,6 @@
             },
         },
         .@"v0.3.5-core" = .{
-            .std = null,
             .fip = "v0.3.2",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -105,7 +101,6 @@
             },
         },
         .@"v0.3.4-core" = .{
-            .std = null,
             .fip = "v0.3.2",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -131,7 +126,6 @@
             },
         },
         .@"v0.3.3-core" = .{
-            .std = null,
             .fip = "v0.3.2",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -157,7 +151,6 @@
             },
         },
         .@"v0.3.2-core" = .{
-            .std = null,
             .fip = "v0.3.2",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -183,7 +176,6 @@
             },
         },
         .@"v0.3.1-core" = .{
-            .std = null,
             .fip = "v0.3.0",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -209,7 +201,6 @@
             },
         },
         .@"v0.3.0-core" = .{
-            .std = null,
             .fip = "v0.3.0",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -235,7 +226,6 @@
             },
         },
         .@"v0.2.5-core" = .{
-            .std = null,
             .fip = "v0.2.5",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -261,7 +251,6 @@
             },
         },
         .@"v0.2.4-core" = .{
-            .std = null,
             .fip = "v0.2.3",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -287,7 +276,6 @@
             },
         },
         .@"v0.2.3-core" = .{
-            .std = null,
             .fip = "v0.2.3",
             .artifacts = .{
                 .@"x86_64-linux" = .{
@@ -314,7 +302,6 @@
         },
         // 0.2.2 is the oldest version to contain a language server, this is why its the oldest version in the registry
         .@"v0.2.2-core" = .{
-            .std = null,
             .fip = "v0.2.1",
             .artifacts = .{
                 .@"x86_64-linux" = .{
