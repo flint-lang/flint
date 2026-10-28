@@ -83,7 +83,6 @@ pub fn main(init: std.process.Init) !u8 {
     const toolchain_path = try getToolchainPath(init.io, allocator, init.environ_map);
     defer allocator.free(toolchain_path);
 
-    const registry: Registry = try .get(init.io, allocator, toolchain_path);
     defer Registry.deinit(allocator);
     defer State.deinit(allocator);
 
@@ -134,7 +133,7 @@ pub fn main(init: std.process.Init) !u8 {
                 return 1;
             };
 
-            var iter_toolchain = registry.toolchain.iterator();
+            var iter_toolchain = (try Registry.get(init.io, allocator, toolchain_path)).toolchain.iterator();
             const version_found: bool = blk2: while (iter_toolchain.next()) |toolchain| {
                 if (std.mem.eql(u8, toolchain.key_ptr.*, _version)) {
                     break :blk2 true;
@@ -158,7 +157,7 @@ pub fn main(init: std.process.Init) !u8 {
         .fip => return fip_cmd.main(init.io, allocator, iter),
         .target => return target_cmd.main(init.io, allocator, iter),
         .list => {
-            var iter_toolchain = registry.toolchain.iterator();
+            var iter_toolchain = (try Registry.get(init.io, allocator, toolchain_path)).toolchain.iterator();
             try stdout.writeAll("Available Flint versions:\n");
             var current = iter_toolchain.next();
             while (current) |toolchain| {
