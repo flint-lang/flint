@@ -408,7 +408,11 @@ fn downloadFile(io: std.Io, allocator: std.mem.Allocator, url: []const u8, file_
 
 fn getRegistryFileContent(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) ![:0]const u8 {
     const url = "https://raw.githubusercontent.com/flint-lang/flint/main/registry.zon";
-    const registry_path: []const u8 = try std.fmt.allocPrint(allocator, "{s}/registry.zon", .{toolchain_path});
+    const registry_path: []const u8 = switch (builtin.os.tag) {
+        .windows => try std.fmt.allocPrint(allocator, "{s}\\registry.zon", .{toolchain_path}),
+        .linux => try std.fmt.allocPrint(allocator, "{s}/registry.zon", .{toolchain_path}),
+        else => @panic("Unsupported OS"),
+    };
     defer allocator.free(registry_path);
     if (std.Io.Dir.cwd().readFileAlloc(io, registry_path, allocator, .unlimited)) |content| {
         defer allocator.free(content);

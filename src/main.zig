@@ -11,6 +11,7 @@ const fetch_cmd = @import("fetch_cmd.zig");
 const build_cmd = @import("build_cmd.zig");
 
 const Registry = @import("Registry.zig");
+const State = @import("State.zig");
 
 const SubCommands = enum {
     help,
@@ -84,6 +85,7 @@ pub fn main(init: std.process.Init) !u8 {
 
     const registry: Registry = try .get(init.io, allocator, toolchain_path);
     defer Registry.deinit(allocator);
+    defer State.deinit(allocator);
 
     var iter = try init.minimal.args.iterateAllocator(allocator);
     defer iter.deinit();
