@@ -38,47 +38,61 @@ const ToolchainRelease = struct {
             .fip_version = undefined,
             .artifacts = .empty,
         };
+        var fip_version_parsed: bool = false;
+        var artifacts_parsed: bool = false;
+        errdefer release.deinit(allocator, fip_version_parsed);
 
-        const fip_version_name = names[0].get(zoir);
-        if (!std.mem.eql(u8, fip_version_name, "fip_version")) {
-            std.log.err("Expected field 'fip_version' in toolchain release but got {s}", .{fip_version_name});
-            return error.UnexpectedFieldInRelease;
+        for (names, 0..vals.len) |field_name, i| {
+            if (std.mem.eql(u8, field_name.get(zoir), "fip_version")) {
+                if (fip_version_parsed) {
+                    return error.DuplicateField;
+                }
+                release.fip_version = switch (vals.at(@intCast(i)).get(zoir)) {
+                    .string_literal => |fip_version| try allocator.dupe(u8, fip_version),
+                    else => {
+                        return error.ExpectedStringLiteral;
+                    },
+                };
+                fip_version_parsed = true;
+            } else if (std.mem.eql(u8, field_name.get(zoir), "artifacts")) {
+                if (artifacts_parsed) {
+                    return error.DuplicateField;
+                }
+                const artifacts_struct = switch (vals.at(@intCast(i)).get(zoir)) {
+                    .struct_literal => |artifact| artifact,
+                    else => {
+                        return error.ExpectedStructLiteral;
+                    },
+                };
+                for (artifacts_struct.names, 0..artifacts_struct.vals.len) |platform_node, j| {
+                    const artifact =
+                        try std.zon.parse.fromZoirNodeAlloc(
+                            PlatformArtifacts,
+                            allocator,
+                            ast,
+                            zoir,
+                            artifacts_struct.vals.at(@intCast(j)),
+                            null,
+                            .{},
+                        );
+                    try release.artifacts.put(allocator, try allocator.dupe(u8, platform_node.get(zoir)), artifact);
+                }
+                artifacts_parsed = true;
+            }
         }
-        release.fip_version = switch (vals.at(0).get(zoir)) {
-            .string_literal => |fip_version| try allocator.dupe(u8, fip_version),
-            else => return error.ExpectedStringLiteral,
-        };
-
-        const artifacts_name = names[1].get(zoir);
-        if (!std.mem.eql(u8, artifacts_name, "artifacts")) {
-            std.log.err("Expected field 'artifacts' in toolchain release but got {s}", .{artifacts_name});
-            return error.UnexpectedFieldInRelease;
+        if (!fip_version_parsed) {
+            return error.MissingField;
         }
-        const artifacts_struct = switch (vals.at(1).get(zoir)) {
-            .struct_literal => |artifact| artifact,
-            else => return error.ExpectedStructLiteral,
-        };
-
-        for (artifacts_struct.names, 0..artifacts_struct.vals.len) |platform_node, k| {
-            try release.artifacts.put(
-                allocator,
-                try allocator.dupe(u8, platform_node.get(zoir)),
-                try std.zon.parse.fromZoirNodeAlloc(
-                    PlatformArtifacts,
-                    allocator,
-                    ast,
-                    zoir,
-                    artifacts_struct.vals.at(@intCast(k)),
-                    null,
-                    .{},
-                ),
-            );
+        if (!artifacts_parsed) {
+            return error.MissingField;
         }
         return release;
     }
 
-    pub fn deinit(self: *ToolchainRelease, allocator: std.mem.Allocator) void {
-        allocator.free(self.fip_version);
+    pub fn deinit(self: *ToolchainRelease, allocator: std.mem.Allocator, fip_version_parsed: bool) void {
+        if (fip_version_parsed) {
+            allocator.free(self.fip_version);
+        }
         var iter = self.artifacts.iterator();
         while (iter.next()) |*artifacts| {
             allocator.free(artifacts.key_ptr.*);
@@ -102,6 +116,9 @@ const FipRelease = struct {
         var release: FipRelease = .{
             .c = .empty,
         };
+        errdefer release.deinit(allocator);
+
+        var c_parsed: bool = false;
 
         for (names, 0..vals.len) |language_node, i| {
             const language = language_node.get(zoir);
@@ -111,10 +128,11 @@ const FipRelease = struct {
             };
 
             if (std.mem.eql(u8, language, "c")) {
+                if (c_parsed) {
+                    return error.DuplicateField;
+                }
                 for (language_struct.names, 0..language_struct.vals.len) |platform_node, j| {
-                    try release.c.put(
-                        allocator,
-                        try allocator.dupe(u8, platform_node.get(zoir)),
+                    const artifact =
                         try std.zon.parse.fromZoirNodeAlloc(
                             Artifact,
                             allocator,
@@ -123,10 +141,14 @@ const FipRelease = struct {
                             language_struct.vals.at(@intCast(j)),
                             null,
                             .{},
-                        ),
-                    );
+                        );
+                    try release.c.put(allocator, try allocator.dupe(u8, platform_node.get(zoir)), artifact);
                 }
-            } else {}
+                c_parsed = true;
+            }
+        }
+        if (!c_parsed) {
+            return error.MissingField;
         }
         return release;
     }
@@ -164,16 +186,22 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
         else => return error.ExpectedStruct,
     };
 
-    var result: Self = .{
+    registry = .{
         .toolchain = .empty,
         .fip = .empty,
     };
+
+    var toolchain_parsed: bool = false;
+    var fip_parsed: bool = false;
 
     for (root_struct.names, 0..root_struct.vals.len) |name_node, f| {
         const name = name_node.get(zoir);
         const value_node = root_struct.vals.at(@intCast(f));
 
         if (std.mem.eql(u8, name, "toolchain")) {
+            if (toolchain_parsed) {
+                return error.DuplicateField;
+            }
             const toolchain_struct = switch (value_node.get(zoir)) {
                 .struct_literal => |s| s,
                 else => return error.ExpectedStruct,
@@ -183,15 +211,20 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
                     .struct_literal => |s| s,
                     else => return error.ExpectedStruct,
                 };
-                try result.toolchain.put(allocator, try allocator.dupe(u8, version.get(zoir)), try ToolchainRelease.parse(
+                const release = try ToolchainRelease.parse(
                     allocator,
                     zoir,
                     ast,
                     release_struct.names,
                     release_struct.vals,
-                ));
+                );
+                try registry.?.toolchain.put(allocator, try allocator.dupe(u8, version.get(zoir)), release);
             }
+            toolchain_parsed = true;
         } else if (std.mem.eql(u8, name, "fip")) {
+            if (fip_parsed) {
+                return error.DuplicateField;
+            }
             const fip_struct = switch (value_node.get(zoir)) {
                 .struct_literal => |s| s,
                 else => return error.ExpectedStruct,
@@ -201,26 +234,31 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
                     .struct_literal => |s| s,
                     else => return error.ExpectedStruct,
                 };
-                try result.fip.put(allocator, try allocator.dupe(u8, version.get(zoir)), try FipRelease.parse(
+                const release = try FipRelease.parse(
                     allocator,
                     zoir,
                     ast,
                     release_struct.names,
                     release_struct.vals,
-                ));
+                );
+                try registry.?.fip.put(allocator, try allocator.dupe(u8, version.get(zoir)), release);
             }
-        } else {
-            std.log.err("Unknown field at top level in registry: {s}", .{name});
-            return error.MalformedRegistry;
+            fip_parsed = true;
         }
+    }
+
+    if (!toolchain_parsed) {
+        return error.MissingField;
+    }
+    if (!fip_parsed) {
+        return error.MissingField;
     }
 
     var stdout_writer = std.Io.File.stdout().writer(io, &.{});
     const stdout = &stdout_writer.interface;
     try diag_zon.format(stdout);
 
-    registry = result;
-    return result;
+    return registry.?;
 }
 
 pub fn deinit(allocator: std.mem.Allocator) void {
@@ -231,7 +269,7 @@ pub fn deinit(allocator: std.mem.Allocator) void {
     var iter1 = registry.?.toolchain.iterator();
     while (iter1.next()) |release| {
         allocator.free(release.key_ptr.*);
-        release.value_ptr.deinit(allocator);
+        release.value_ptr.deinit(allocator, true);
     }
     registry.?.toolchain.deinit(allocator);
 
@@ -241,6 +279,7 @@ pub fn deinit(allocator: std.mem.Allocator) void {
         release.value_ptr.deinit(allocator);
     }
     registry.?.fip.deinit(allocator);
+    registry = null;
 }
 
 pub fn dump(writer: *std.Io.Writer) !void {

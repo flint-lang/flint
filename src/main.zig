@@ -73,9 +73,9 @@ pub fn main(init: std.process.Init) !u8 {
     defer allocator.free(toolchain_path);
 
     const registry: Registry = try .get(init.io, allocator, toolchain_path);
+    defer Registry.deinit(allocator);
     _ = registry;
     try Registry.dump(stdout);
-    defer Registry.deinit(allocator);
 
     var iter = try init.minimal.args.iterateAllocator(allocator);
     defer iter.deinit();
