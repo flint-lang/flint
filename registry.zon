@@ -331,12 +331,10 @@
         .@"v0.4.1" = .{
             .c = .{
                 .@"x86_64-linux" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.4.1/fip-c",
                     .shasum = "90f965f4636b25b8c06263e93f37726f95f433d6795c02a7dfe9edb5a1e15a79",
                 },
                 .@"x86_64-windows" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.4.1/fip-c.exe",
                     .shasum = "8a87f0c0cfd4cdef3635fd5f813f519043f2931233ffb351d2732bc5c5c8a5f1",
                 },
@@ -345,12 +343,10 @@
         .@"v0.4.0" = .{
             .c = .{
                 .@"x86_64-linux" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.4.0/fip-c",
                     .shasum = "9a73fe83989e18ba96523cf3bb3176eb27fa8f4fc5d40b8359d7116a7e889cd2",
                 },
                 .@"x86_64-windows" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.4.0/fip-c.exe",
                     .shasum = "7afe24f3845cfbb1f8fc2550acbfe8fd6876e4bdc470bf1faf37695c64b57832",
                 },
@@ -359,12 +355,10 @@
         .@"v0.3.2" = .{
             .c = .{
                 .@"x86_64-linux" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.3.2/fip-c",
                     .shasum = "587441dcba543e44ed01c3435f8b7c7f6b5e07e438a73ceab0a331e140f67faa",
                 },
                 .@"x86_64-windows" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.3.2/fip-c.exe",
                     .shasum = "f80ad34799dca4f57e1da3198f3a287caa78390a25a87478a384509313bcc4ee",
                 },
@@ -373,12 +367,10 @@
         .@"v0.3.0" = .{
             .c = .{
                 .@"x86_64-linux" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.3.0/fip-c",
                     .shasum = "11ce493a96829a5139a646707eed31e0f004fbd0e381dee6911139254f7eb844",
                 },
                 .@"x86_64-windows" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.3.0/fip-c.exe",
                     .shasum = "22696d944864f85d5fb9b0a4b1ff0680deb15433376917c9bd58e8c679db4449",
                 },
@@ -387,12 +379,10 @@
         .@"v0.2.5" = .{
             .c = .{
                 .@"x86_64-linux" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.2.5/fip-c",
                     .shasum = "841991d5c1c406c517afe7059b3843a2ba9a62515b88d036521a5f948ee70341",
                 },
                 .@"x86_64-windows" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.2.5/fip-c.exe",
                     .shasum = "eb62d9b54456cc94d09d0bb7c03ec1a2ef8ab5d6bccca297a8c24ea0f15b916a",
                 },
@@ -401,12 +391,10 @@
         .@"v0.2.3" = .{
             .c = .{
                 .@"x86_64-linux" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.2.3/fip-c",
                     .shasum = "12a8cb85418c1c815f9685520f841820eb9bbba9dff294b99510717911740a7a",
                 },
                 .@"x86_64-windows" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.2.3/fip-c.exe",
                     .shasum = "ddd6fbf06e66d55938cad8b97c948202b69aad8c998570249dac926240a1ecc2",
                 },
@@ -415,7 +403,6 @@
         .@"v0.2.1" = .{
             .c = .{
                 .@"x86_64-linux" = .{
-                    .revision = null, // No revisions yet, revisions start with 0.4.3+
                     .url = "https://github.com/flint-lang/fip/releases/download/v0.2.1/fip-c",
                     .shasum = "cf9d205d82c5b506103a9667ec693f4be0eac0bdd3d1f98f745498df955212b7",
                 },
