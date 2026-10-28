@@ -4,31 +4,41 @@ const clap = @import("clap");
 
 const defines = @import("defines");
 
+const fip_cmd = @import("fip_cmd.zig");
+const target_cmd = @import("target_cmd.zig");
 const init_cmd = @import("init_cmd.zig");
 const fetch_cmd = @import("fetch_cmd.zig");
 const build_cmd = @import("build_cmd.zig");
-const core_cmd = @import("core_cmd.zig");
-const fip_cmd = @import("fip_cmd.zig");
-const target_cmd = @import("target_cmd.zig");
 
 const Registry = @import("Registry.zig");
 
 const SubCommands = enum {
     help,
+    // Other toolchain-related commands
+    fip,
+    target,
+    // Core commands
+    list,
+    install,
+    update,
+    remove,
+    @"switch",
+    // Build-related commands
     init,
     fetch,
     build,
-    core,
-    fip,
-    target,
 };
 const parsers = .{
     .command = clap.parsers.enumeration(SubCommands),
+    .version = clap.parsers.string,
 };
 const params = clap.parseParamsComptime(
     \\-h, --help    Display this help and exit
     \\-v, --version Display the version information and exit
     \\<command>     The command to execute
+);
+const version_params = clap.parseParamsComptime(
+    \\<version>     The Flint version to manage
 );
 
 fn getToolchainPath(io: std.Io, allocator: std.mem.Allocator, environ_map: *const std.process.Environ.Map) ![]const u8 {
@@ -74,8 +84,6 @@ pub fn main(init: std.process.Init) !u8 {
 
     const registry: Registry = try .get(init.io, allocator, toolchain_path);
     defer Registry.deinit(allocator);
-    _ = registry;
-    try Registry.dump(stdout);
 
     var iter = try init.minimal.args.iterateAllocator(allocator);
     defer iter.deinit();
@@ -98,7 +106,6 @@ pub fn main(init: std.process.Init) !u8 {
         try printHelp(stdout);
         return 0;
     }
-
     if (res.args.version != 0) {
         try stdout.print("flint v{s} ({s}, {s})\n", .{ defines.version, defines.hash, defines.date });
         try stdout.flush();
@@ -110,18 +117,81 @@ pub fn main(init: std.process.Init) !u8 {
         try printHelp(stderr);
         return 1;
     };
-    return switch (command) {
-        .help => blk: {
-            try printHelp(stdout);
-            break :blk 0;
+    const version: []const u8 = switch (command) {
+        .help, .fip, .target, .list => &.{},
+        .install, .update, .remove, .@"switch" => blk: {
+            var version_res = try clap.parseEx(clap.Help, &version_params, parsers, &iter, .{
+                .diagnostic = &diag_clap,
+                .allocator = allocator,
+                .terminating_positional = 0,
+            });
+            defer version_res.deinit();
+            const _version = version_res.positionals[0] orelse {
+                std.log.err("Missing required argument <version> for '{s}'", .{@tagName(command)});
+                try printHelp(stderr);
+                return 1;
+            };
+
+            var iter_toolchain = registry.toolchain.iterator();
+            const version_found: bool = blk2: while (iter_toolchain.next()) |toolchain| {
+                if (std.mem.eql(u8, toolchain.key_ptr.*, _version)) {
+                    break :blk2 true;
+                }
+            } else false;
+            if (!version_found) {
+                std.log.err("Version '{s}' is not part of known Flint versions.", .{_version});
+                std.log.info("Execute 'flint list' to list all available versions.", .{});
+                return 1;
+            }
+
+            break :blk _version;
         },
-        .init => init_cmd.main(init.io, allocator, iter),
-        .build => build_cmd.main(init.io, allocator, iter),
-        .fetch => fetch_cmd.main(init.io, allocator, iter),
-        .core => core_cmd.main(init.io, allocator, iter),
-        .fip => fip_cmd.main(init.io, allocator, iter),
-        .target => target_cmd.main(init.io, allocator, iter),
+        .init, .fetch, .build => &.{},
     };
+    switch (command) {
+        .help => {
+            try printHelp(stdout);
+            return 0;
+        },
+        .fip => return fip_cmd.main(init.io, allocator, iter),
+        .target => return target_cmd.main(init.io, allocator, iter),
+        .list => {
+            var iter_toolchain = registry.toolchain.iterator();
+            try stdout.writeAll("Available Flint versions:\n");
+            var current = iter_toolchain.next();
+            while (current) |toolchain| {
+                const next = iter_toolchain.next();
+                if (next != null) {
+                    try stdout.print(" ├─ {s}\n", .{toolchain.key_ptr.*});
+                } else {
+                    try stdout.print(" └─ {s}\n", .{toolchain.key_ptr.*});
+                }
+                current = next;
+            }
+            try stdout.flush();
+            return 0;
+        },
+        .install => {
+            std.log.debug("'install' command not implemented yet: {s}", .{version});
+            return 1;
+        },
+        .update => {
+            std.log.debug("'update' command not implemented yet", .{});
+            return 1;
+        },
+        .remove => {
+            std.log.debug("'remove' command not implemented yet", .{});
+            return 1;
+        },
+        .@"switch" => {
+            std.log.debug("'switch' command not implemented yet", .{});
+            return 1;
+        },
+        .init => return init_cmd.main(init.io, allocator, iter),
+        .fetch => return fetch_cmd.main(init.io, allocator, iter),
+        .build => return build_cmd.main(init.io, allocator, iter),
+    }
+    unreachable;
 }
 
 fn printHelp(writer: *std.Io.Writer) !void {
@@ -141,17 +211,23 @@ fn printHelp(writer: *std.Io.Writer) !void {
         \\  You can use '-h' or '--help' on any subcommand to get additional information
         \\
         \\Available commands are:
-        \\  help            Print this help message
-        \\  init            Initialize a new empty Flint project in the current working directory
-        \\  fetch           Fetch all external dependencies described in the 'flint.toml' file
-        \\  build           Build the Flint project from the information found in the '[build]' section of the
-        \\                  'flint.toml' file
-        \\  core            Manage installations of Core parts of Flint, like the compiler or lsp
-        \\  fip             Manage installations of Flint Interop Modules like 'fip-c'
-        \\  target          Manage target toolchains installations
+        \\  help                Print this help message
+        \\  fip                 Manage installations of Flint Interop Modules like 'fip-c'
+        \\  target              Manage target toolchains installations
         \\    install
         \\    remove
         \\    list
+        \\
+        \\  list                List all available and installed versions of Flint
+        \\  install <version>   Install a specific version of Flint
+        \\  update <version>    Check for updates of Flint
+        \\  remove <version>    Remove a specific version of Flint
+        \\  switch <version>    Use specific version of Flint
+        \\
+        \\  init                Initialize a new empty Flint project in the current working directory
+        \\  fetch               Fetch all external dependencies described in the 'flint.toml' file
+        \\  build               Build the Flint project from the information found in the '[build]' section of
+        \\                      the 'flint.toml' file
         \\
     );
     try writer.flush();
