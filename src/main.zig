@@ -140,7 +140,7 @@ pub fn main(init: std.process.Init) !u8 {
                 }
             } else false;
             if (!version_found) {
-                std.log.err("Version '{s}' is not part of known Flint versions.", .{_version});
+                std.log.err("Version '{s}' is not a known Flint versions.", .{_version});
                 std.log.info("Execute 'flint list' to list all available versions.", .{});
                 return 1;
             }
@@ -163,10 +163,22 @@ pub fn main(init: std.process.Init) !u8 {
             while (current) |toolchain| {
                 const next = iter_toolchain.next();
                 if (next != null) {
-                    try stdout.print(" ├─ {s}\n", .{toolchain.key_ptr.*});
+                    try stdout.print(" ├─ {s}", .{toolchain.key_ptr.*});
                 } else {
-                    try stdout.print(" └─ {s}\n", .{toolchain.key_ptr.*});
+                    try stdout.print(" └─ {s}", .{toolchain.key_ptr.*});
                 }
+                for ((try State.get(init.io, allocator, toolchain_path)).toolchain_installed) |installed| {
+                    if (std.mem.eql(u8, installed, toolchain.key_ptr.*)) {
+                        try stdout.writeAll(" [installed]");
+                        break;
+                    }
+                }
+                if ((try State.get(init.io, allocator, toolchain_path)).toolchain_active) |active| {
+                    if (std.mem.eql(u8, active, toolchain.key_ptr.*)) {
+                        try stdout.writeAll(" [active]");
+                    }
+                }
+                try stdout.writeByte('\n');
                 current = next;
             }
             try stdout.flush();
