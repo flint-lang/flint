@@ -54,11 +54,15 @@ fn getToolchainPath(io: std.Io, allocator: std.mem.Allocator, environ_map: *cons
             break :blk full_path;
         },
         .linux => blk: {
-            const xdg_data_home = environ_map.get("XDG_DATA_HOME") orelse {
-                std.log.err("Failed to get environment variable '$XDG_DATA_HOME'", .{});
-                return error.GetToolchainPathFailed;
-            };
-            const full_path = try std.fmt.allocPrint(allocator, "{s}/flint", .{xdg_data_home});
+            const full_path =
+                if (environ_map.get("XDG_DATA_HOME")) |xdg_data_home|
+                    try std.fmt.allocPrint(allocator, "{s}/flint", .{xdg_data_home})
+                else if (environ_map.get("HOME")) |home|
+                    try std.fmt.allocPrint(allocator, "{s}/.local/share/flint", .{home})
+                else {
+                    std.log.err("Failed to get either environment variable '$XDG_DATA_HOME' or '$HOME'", .{});
+                    return error.GetToolchainPathFailed;
+                };
             try std.Io.Dir.cwd().createDirPath(io, full_path);
             break :blk full_path;
         },
