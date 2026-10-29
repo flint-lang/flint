@@ -4,6 +4,7 @@ const clap = @import("clap");
 
 const defines = @import("defines");
 
+const net = @import("net.zig");
 const fip_cmd = @import("fip_cmd.zig");
 const target_cmd = @import("target_cmd.zig");
 const init_cmd = @import("init_cmd.zig");
@@ -79,6 +80,8 @@ pub fn main(init: std.process.Init) !u8 {
     // const allocator = gpa.allocator();
     const allocator = init.gpa;
 
+    var stdin_reader = std.Io.File.stdin().reader(init.io, &.{});
+    const stdin = &stdin_reader.interface;
     var stdout_writer = std.Io.File.stdout().writer(init.io, &.{});
     const stdout = &stdout_writer.interface;
     var stderr_writer = std.Io.File.stderr().writer(init.io, &.{});
@@ -131,7 +134,9 @@ pub fn main(init: std.process.Init) !u8 {
                 .terminating_positional = 0,
             });
             defer version_res.deinit();
-            const _version = version_res.positionals[0] orelse {
+            const _version = version_res.positionals[0] orelse if (command == .install)
+                try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path)
+            else {
                 std.log.err("Missing required argument <version> for '{s}' command", .{@tagName(command)});
                 try printHelp(stderr);
                 return 1;
@@ -189,8 +194,99 @@ pub fn main(init: std.process.Init) !u8 {
             return 0;
         },
         .install => {
-            std.log.debug("'install' command not implemented yet: {s}", .{version});
-            return 1;
+            // Check if the to-be-installed version is already installed
+            const already_installed: bool = blk: for ((try State.get(init.io, allocator, toolchain_path)).toolchain_installed) |installed| {
+                if (std.mem.eql(u8, installed, version)) {
+                    break :blk true;
+                }
+            } else false;
+            if (already_installed) {
+                try stdout.print("Version '{s}' is already installed. Do you want to re-install it? [y/N] ", .{version});
+                var out: [1]u8 = @splat(0);
+                try stdin.readSliceAll(&out);
+                switch (out[0]) {
+                    'y', 'Y' => {},
+                    'n', 'N', '\n' => return 0,
+                    else => {
+                        std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out[0]});
+                        return 1;
+                    },
+                }
+            }
+            const release = (try Registry.get(init.io, allocator, toolchain_path)).toolchain.get(version).?;
+            var iter_artifacts = release.artifacts.iterator();
+            const artifact: ?Registry.ToolchainRelease.PlatformArtifacts = blk: while (iter_artifacts.next()) |artifact| {
+                var split_iterator = std.mem.splitScalar(u8, artifact.key_ptr.*, '-');
+                const arch = blk2: {
+                    const arch_str = split_iterator.next() orelse {
+                        std.log.err("Artifact string does not start with architecture: {s}", .{artifact.key_ptr.*});
+                        return 1;
+                    };
+                    break :blk2 std.meta.stringToEnum(std.Target.Cpu.Arch, arch_str) orelse {
+                        std.log.err("Invalid architecture detected in registry: {s}", .{arch_str});
+                        return 1;
+                    };
+                };
+                const platform = blk2: {
+                    const platform_str = split_iterator.next() orelse {
+                        std.log.err("Artifact string does not end with platform: {s}", .{artifact.key_ptr.*});
+                        return 1;
+                    };
+                    break :blk2 std.meta.stringToEnum(std.Target.Os.Tag, platform_str) orelse {
+                        std.log.err("Invalid platform detected in registry: {s}", .{platform_str});
+                        return 1;
+                    };
+                };
+                std.debug.assert(split_iterator.next() == null);
+                if (builtin.cpu.arch != arch) {
+                    continue;
+                }
+                if (builtin.os.tag != platform) {
+                    continue;
+                }
+                break :blk artifact.value_ptr.*;
+            } else null;
+            if (artifact == null) {
+                std.log.err("Could not find suitable platform for this system: {s}-{s}", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) });
+                return 1;
+            }
+            const flintc = artifact.?.flintc;
+            const fls = artifact.?.fls;
+
+            const sep = std.Io.Dir.path.sep;
+            const toolchain_versions_path = try std.fmt.allocPrint(allocator, "{s}{c}toolchain", .{ toolchain_path, sep });
+            defer allocator.free(toolchain_versions_path);
+            try std.Io.Dir.cwd().createDirPath(init.io, toolchain_versions_path);
+
+            const toolchain_install_path = try std.fmt.allocPrint(allocator, "{s}{c}{s}", .{ toolchain_versions_path, sep, version });
+            defer allocator.free(toolchain_install_path);
+            try std.Io.Dir.cwd().createDirPath(init.io, toolchain_install_path);
+
+            const toolchain_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}bin", .{ toolchain_install_path, sep });
+            defer allocator.free(toolchain_bin_path);
+            try std.Io.Dir.cwd().createDirPath(init.io, toolchain_bin_path);
+
+            const flintc_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}flintc", .{ toolchain_bin_path, sep });
+            defer allocator.free(flintc_bin_path);
+
+            const fls_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}fls", .{ toolchain_bin_path, sep });
+            defer allocator.free(fls_bin_path);
+
+            try net.downloadFile(init.io, allocator, flintc.url, flintc_bin_path);
+            try net.downloadFile(init.io, allocator, fls.url, fls_bin_path);
+
+            if (builtin.os.tag != .windows) {
+                const flintc_file = try std.Io.Dir.cwd().openFile(init.io, flintc_bin_path, .{});
+                defer flintc_file.close(init.io);
+                try flintc_file.setPermissions(init.io, .executable_file);
+
+                const fls_file = try std.Io.Dir.cwd().openFile(init.io, fls_bin_path, .{});
+                defer fls_file.close(init.io);
+                try fls_file.setPermissions(init.io, .executable_file);
+            }
+
+            try State.add_toolchain_installed(init.io, allocator, toolchain_path, version);
+            return 0;
         },
         .update => {
             std.log.debug("'update' command not implemented yet", .{});
@@ -236,8 +332,10 @@ fn printHelp(writer: *std.Io.Writer) !void {
         \\    list
         \\
         \\  list                List all available and installed versions of Flint
-        \\  install <version>   Install a specific version of Flint
-        \\  update <version>    Check for updates of Flint
+        \\  install [<version>] Install a specific version of Flint (just installs the newest Flint version if
+        \\                      no version is provided)
+        \\  update              Check for updates of Flint (force-fetches the 'registry.zon' file)
+        \\  upgrade             Installs the newest Flint version and uninstalls the version currently in use
         \\  remove <version>    Remove a specific version of Flint
         \\  switch <version>    Use specific version of Flint
         \\

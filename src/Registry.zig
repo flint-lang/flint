@@ -6,11 +6,12 @@ const net = @import("net.zig");
 const Self = @This();
 
 var registry: ?Self = null;
+var newest_toolchain_release: ?[]const u8 = null;
 
 toolchain: std.StringArrayHashMapUnmanaged(ToolchainRelease),
 fip: std.StringArrayHashMapUnmanaged(FipRelease),
 
-const Artifact = struct {
+pub const Artifact = struct {
     url: []const u8,
     shasum: []const u8,
 
@@ -20,11 +21,11 @@ const Artifact = struct {
     }
 };
 
-const ToolchainRelease = struct {
+pub const ToolchainRelease = struct {
     fip_version: []const u8,
     artifacts: std.StringArrayHashMapUnmanaged(PlatformArtifacts),
 
-    const PlatformArtifacts = struct {
+    pub const PlatformArtifacts = struct {
         flintc: Artifact,
         fls: Artifact,
     };
@@ -105,7 +106,7 @@ const ToolchainRelease = struct {
     }
 };
 
-const FipRelease = struct {
+pub const FipRelease = struct {
     c: std.StringArrayHashMapUnmanaged(Artifact),
 
     pub fn parse(
@@ -165,6 +166,11 @@ const FipRelease = struct {
     }
 };
 
+pub fn getNewestToolchainVersion(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) ![]const u8 {
+    _ = try get(io, allocator, toolchain_path);
+    return newest_toolchain_release.?;
+}
+
 pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !Self {
     if (registry) |reg| {
         return reg;
@@ -221,6 +227,10 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
                     release_struct.vals,
                 );
                 try registry.?.toolchain.put(allocator, try allocator.dupe(u8, version.get(zoir)), release);
+                if (newest_toolchain_release == null) {
+                    // The first release to be parsed is always the newest release
+                    newest_toolchain_release = try allocator.dupe(u8, version.get(zoir));
+                }
             }
             toolchain_parsed = true;
         } else if (std.mem.eql(u8, name, "fip")) {
@@ -282,6 +292,10 @@ pub fn deinit(allocator: std.mem.Allocator) void {
     }
     registry.?.fip.deinit(allocator);
     registry = null;
+    if (newest_toolchain_release) |release| {
+        allocator.free(release);
+    }
+    newest_toolchain_release = null;
 }
 
 pub fn dump(writer: *std.Io.Writer) !void {

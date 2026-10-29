@@ -6,10 +6,10 @@ const Self = @This();
 var state: ?Self = null;
 
 toolchain_active: ?[]const u8,
-toolchain_installed: []const []const u8,
+toolchain_installed: [][]const u8,
 fip_active: ?[]const u8,
 fip_installed: struct {
-    c: []const []const u8,
+    c: [][]const u8,
 },
 
 pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !Self {
@@ -124,7 +124,7 @@ pub fn dump(writer: *std.Io.Writer) !void {
         try writer.print(
             \\    .fip_active = "{s}",
             \\
-        , .{state.?.toolchain_active.?});
+        , .{state.?.fip_active.?});
     }
 
     try writer.writeAll(
@@ -156,6 +156,27 @@ pub fn dump(writer: *std.Io.Writer) !void {
     );
 }
 
+pub fn add_toolchain_installed(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, new: []const u8) !void {
+    std.debug.assert(state != null);
+    if (state.?.toolchain_active == null) {
+        // Use newly installed version if it is the first version to install
+        state.?.toolchain_active = try allocator.dupe(u8, new);
+    }
+
+    for (state.?.toolchain_installed) |installed| {
+        if (std.mem.eql(u8, new, installed)) {
+            // Already present, we dont need to add it to the list
+            break;
+        }
+    } else {
+        // Newly added, so we need to add it to the list
+        state.?.toolchain_installed = try allocator.realloc(state.?.toolchain_installed, state.?.toolchain_installed.len + 1);
+        state.?.toolchain_installed[state.?.toolchain_installed.len - 1] = try allocator.dupe(u8, new);
+    }
+
+    try save(io, allocator, toolchain_path);
+}
+
 fn save(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
     const state_path: []const u8 = switch (builtin.os.tag) {
         .windows => try std.fmt.allocPrint(allocator, "{s}\\state.zon", .{toolchain_path}),
@@ -164,8 +185,23 @@ fn save(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !v
     };
     defer allocator.free(state_path);
 
-    const file: std.Io.File = try std.Io.Dir.cwd().openFile(io, state_path, .{});
-    var file_writer = file.writer(io, &.{});
+    const file: std.Io.File = try std.Io.Dir.cwd().createFile(io, state_path, .{});
+    defer file.close(io);
+    var file_writer = file.writerStreaming(io, &.{});
     try dump(&file_writer.interface);
-    file.close(io);
+    try file_writer.flush();
+
+    if (state.?.toolchain_active) |target| {
+        const sep = std.Io.Dir.path.sep;
+        const active_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}active", .{ toolchain_path, sep });
+        defer allocator.free(active_path);
+
+        const target_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}{2s}", .{ toolchain_path, sep, target });
+        defer allocator.free(target_path);
+
+        try std.Io.Dir.cwd().deleteFile(io, active_path);
+        std.log.info("creating symlink {s} -> {s} ...", .{ active_path, target_path });
+
+        try std.Io.Dir.cwd().symLink(io, target_path, active_path, .{ .is_directory = true });
+    }
 }
