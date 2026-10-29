@@ -1,6 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+const net = @import("net.zig");
+
 const Self = @This();
 
 var registry: ?Self = null;
@@ -377,35 +379,6 @@ pub fn dump(writer: *std.Io.Writer) !void {
     try writer.flush();
 }
 
-fn downloadFile(io: std.Io, allocator: std.mem.Allocator, url: []const u8, file_path: []const u8) !void {
-    var client: std.http.Client = .{
-        .allocator = allocator,
-        .io = io,
-    };
-    defer client.deinit();
-
-    var file = try std.Io.Dir.cwd().createFile(io, file_path, .{ .truncate = true });
-    defer file.close(io);
-
-    var file_buf: [16 * 1024]u8 = undefined;
-    var file_writer = file.writer(io, &file_buf);
-
-    const result = try client.fetch(.{
-        .location = .{ .url = url },
-        .method = .GET,
-        .response_writer = &file_writer.interface,
-    });
-    try file_writer.interface.flush();
-
-    if (result.status.class() != .success) {
-        std.log.err("download failed: {d} {s}", .{
-            @intFromEnum(result.status),
-            result.status.phrase() orelse "unknown",
-        });
-        return error.HttpRequestFailed;
-    }
-}
-
 fn getRegistryFileContent(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) ![:0]const u8 {
     const url = "https://raw.githubusercontent.com/flint-lang/flint/main/registry.zon";
     const registry_path: []const u8 = switch (builtin.os.tag) {
@@ -419,7 +392,7 @@ fn getRegistryFileContent(io: std.Io, allocator: std.mem.Allocator, toolchain_pa
         return allocator.dupeSentinel(u8, content, 0);
     } else |_| {
         // Fetch registry, it does not exist yet
-        try downloadFile(io, allocator, url, registry_path);
+        try net.downloadFile(io, allocator, url, registry_path);
         const content = try std.Io.Dir.cwd().readFileAlloc(io, registry_path, allocator, .unlimited);
         defer allocator.free(content);
         return allocator.dupeSentinel(u8, content, 0);

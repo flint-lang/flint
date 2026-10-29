@@ -132,7 +132,7 @@ pub fn main(init: std.process.Init) !u8 {
             });
             defer version_res.deinit();
             const _version = version_res.positionals[0] orelse {
-                std.log.err("Missing required argument <version> for '{s}'", .{@tagName(command)});
+                std.log.err("Missing required argument <version> for '{s}' command", .{@tagName(command)});
                 try printHelp(stderr);
                 return 1;
             };
