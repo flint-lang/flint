@@ -298,6 +298,22 @@ pub fn deinit(allocator: std.mem.Allocator) void {
     newest_toolchain_release = null;
 }
 
+pub fn delete(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
+    deinit(allocator);
+
+    const registry_path: []const u8 = switch (builtin.os.tag) {
+        .windows => try std.fmt.allocPrint(allocator, "{s}\\registry.zon", .{toolchain_path}),
+        .linux => try std.fmt.allocPrint(allocator, "{s}/registry.zon", .{toolchain_path}),
+        else => @panic("Unsupported OS"),
+    };
+    defer allocator.free(registry_path);
+
+    std.Io.Dir.cwd().deleteFile(io, registry_path) catch |err| switch (err) {
+        error.FileNotFound => {},
+        else => return err,
+    };
+}
+
 pub fn dump(writer: *std.Io.Writer) !void {
     if (registry == null) {
         try writer.writeAll(".{}\n");

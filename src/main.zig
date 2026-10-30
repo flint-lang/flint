@@ -23,6 +23,7 @@ const SubCommands = enum {
     list,
     install,
     update,
+    upgrade,
     remove,
     @"switch",
     // Build-related commands
@@ -126,8 +127,8 @@ pub fn main(init: std.process.Init) !u8 {
         return 1;
     };
     const version: []const u8 = switch (command) {
-        .help, .fip, .target, .list => &.{},
-        .install, .update, .remove, .@"switch" => blk: {
+        .help, .fip, .target, .list, .update, .upgrade => &.{},
+        .install, .remove, .@"switch" => blk: {
             var version_res = try clap.parseEx(clap.Help, &version_params, parsers, &iter, .{
                 .diagnostic = &diag_clap,
                 .allocator = allocator,
@@ -158,7 +159,7 @@ pub fn main(init: std.process.Init) !u8 {
         },
         .init, .fetch, .build => &.{},
     };
-    switch (command) {
+    sw: switch (command) {
         .help => {
             try printHelp(stdout);
             return 0;
@@ -289,7 +290,32 @@ pub fn main(init: std.process.Init) !u8 {
             return 0;
         },
         .update => {
-            std.log.debug("'update' command not implemented yet", .{});
+            const old_newest: []const u8 = try allocator.dupe(u8, (try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path)));
+            defer allocator.free(old_newest);
+            try Registry.delete(init.io, allocator, toolchain_path);
+            _ = try Registry.get(init.io, allocator, toolchain_path);
+
+            const new_newest = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
+            if (std.mem.eql(u8, old_newest, new_newest)) {
+                std.log.info("No new Flint version available, newest version is still {s}", .{old_newest});
+            } else {
+                try stdout.print("New Flint version found: '{s}'. Do you want to execute 'flint upgrade' now? [y/N] ", .{new_newest});
+                var out: [1]u8 = @splat(0);
+                try stdin.readSliceAll(&out);
+                switch (out[0]) {
+                    'y', 'Y' => {},
+                    'n', 'N', '\n' => return 0,
+                    else => {
+                        std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out[0]});
+                        return 1;
+                    },
+                }
+                continue :sw .upgrade;
+            }
+            return 0;
+        },
+        .upgrade => {
+            std.log.debug("'upgrade' command not implemented yet", .{});
             return 1;
         },
         .remove => {
