@@ -177,6 +177,42 @@ pub fn addToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain
     try save(io, allocator, toolchain_path);
 }
 
+pub fn removeToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, version: []const u8) !void {
+    _ = try get(io, allocator, toolchain_path);
+
+    if (state.?.toolchain_active) |active| {
+        if (std.mem.eql(u8, version, active)) {
+            // We are removing the currently active version, meaning that no version is active any more
+            allocator.free(active);
+            state.?.toolchain_active = null;
+        }
+    }
+
+    var new_list: std.ArrayList([]const u8) = .empty;
+    defer new_list.deinit(allocator);
+    var removed: bool = false;
+    for (state.?.toolchain_installed) |installed| {
+        if (std.mem.eql(u8, version, installed)) {
+            std.debug.assert(!removed);
+            allocator.free(installed);
+
+            const version_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}{2s}", .{ toolchain_path, std.Io.Dir.path.sep, version });
+            defer allocator.free(version_path);
+            try std.Io.Dir.cwd().deleteTree(io, version_path);
+            removed = true;
+            continue;
+        }
+        try new_list.append(allocator, installed);
+    } else if (!removed) {
+        std.log.err("Version '{0s}' is not installed and thus cannot be removed", .{version});
+        return error.VersionNotPresent;
+    }
+    allocator.free(state.?.toolchain_installed);
+    state.?.toolchain_installed = try new_list.toOwnedSlice(allocator);
+
+    try save(io, allocator, toolchain_path);
+}
+
 pub fn setActiveToolchain(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, version: []const u8) !void {
     _ = try get(io, allocator, toolchain_path);
 
@@ -186,13 +222,12 @@ pub fn setActiveToolchain(io: std.Io, allocator: std.mem.Allocator, toolchain_pa
             break;
         }
     } else {
-        std.log.err("Version '{0s}' is not yet install. Run 'flint install {0s}' first.", .{version});
+        std.log.err("Version '{0s}' is not yet installed. Run 'flint install {0s}' first.", .{version});
         return error.VersionNotPresent;
     }
 
     if (state.?.toolchain_active) |old_active| {
         if (std.mem.eql(u8, old_active, version)) {
-            std.log.info("Version '{s}' is already active", .{version});
             return;
         }
         allocator.free(old_active);
@@ -216,19 +251,17 @@ fn save(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !v
     try dump(&file_writer.interface);
     try file_writer.flush();
 
+    // Always delete the active symlink, only re-create it if a toolchain is active
+    const sep = std.Io.Dir.path.sep;
+    const active_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}active", .{ toolchain_path, sep });
+    defer allocator.free(active_path);
+    std.Io.Dir.cwd().deleteFile(io, active_path) catch |err| switch (err) {
+        error.FileNotFound => {},
+        else => return err,
+    };
     if (state.?.toolchain_active) |target| {
-        const sep = std.Io.Dir.path.sep;
-        const active_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}active", .{ toolchain_path, sep });
-        defer allocator.free(active_path);
-
         const target_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}{2s}", .{ toolchain_path, sep, target });
         defer allocator.free(target_path);
-
-        std.Io.Dir.cwd().deleteFile(io, active_path) catch |err| switch (err) {
-            error.FileNotFound => {},
-            else => return err,
-        };
-        std.log.info("creating symlink {s} -> {s} ...", .{ active_path, target_path });
 
         try std.Io.Dir.cwd().symLink(io, target_path, active_path, .{ .is_directory = true });
     }

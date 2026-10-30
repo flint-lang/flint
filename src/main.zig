@@ -14,7 +14,7 @@ const build_cmd = @import("build_cmd.zig");
 const Registry = @import("Registry.zig");
 const State = @import("State.zig");
 
-const SubCommands = enum {
+const SubCommand = enum {
     help,
     // Other toolchain-related commands
     fip,
@@ -32,7 +32,7 @@ const SubCommands = enum {
     build,
 };
 const parsers = .{
-    .command = clap.parsers.enumeration(SubCommands),
+    .command = clap.parsers.enumeration(SubCommand),
     .version = clap.parsers.string,
 };
 const params = clap.parseParamsComptime(
@@ -126,7 +126,7 @@ pub fn main(init: std.process.Init) !u8 {
         try printHelp(stderr);
         return 1;
     };
-    const version: []const u8 = switch (command) {
+    var version: []const u8 = switch (command) {
         .help, .fip, .target, .list, .update, .upgrade => &.{},
         .install, .remove, .@"switch" => blk: {
             var version_res = try clap.parseEx(clap.Help, &version_params, parsers, &iter, .{
@@ -159,6 +159,11 @@ pub fn main(init: std.process.Init) !u8 {
         },
         .init, .fetch, .build => &.{},
     };
+    var continuation: ?SubCommand = null;
+    var active: ?[]const u8 = null;
+    defer if (active) |a| {
+        allocator.free(a);
+    };
     sw: switch (command) {
         .help => {
             try printHelp(stdout);
@@ -183,8 +188,8 @@ pub fn main(init: std.process.Init) !u8 {
                         break;
                     }
                 }
-                if ((try State.get(init.io, allocator, toolchain_path)).toolchain_active) |active| {
-                    if (std.mem.eql(u8, active, toolchain.key_ptr.*)) {
+                if ((try State.get(init.io, allocator, toolchain_path)).toolchain_active) |a| {
+                    if (std.mem.eql(u8, a, toolchain.key_ptr.*)) {
                         try stdout.writeAll(" [active]");
                     }
                 }
@@ -287,14 +292,17 @@ pub fn main(init: std.process.Init) !u8 {
             }
 
             try State.addToolchainInstalled(init.io, allocator, toolchain_path, version);
+
+            if (continuation) |next| {
+                continuation = .install;
+                continue :sw next;
+            }
             return 0;
         },
         .update => {
             const old_newest: []const u8 = try allocator.dupe(u8, (try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path)));
             defer allocator.free(old_newest);
             try Registry.delete(init.io, allocator, toolchain_path);
-            _ = try Registry.get(init.io, allocator, toolchain_path);
-
             const new_newest = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
             if (std.mem.eql(u8, old_newest, new_newest)) {
                 std.log.info("No new Flint version available, newest version is still {s}", .{old_newest});
@@ -310,17 +318,51 @@ pub fn main(init: std.process.Init) !u8 {
                         return 1;
                     },
                 }
+                version = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
                 continue :sw .upgrade;
             }
             return 0;
         },
         .upgrade => {
-            std.log.debug("'upgrade' command not implemented yet", .{});
-            return 1;
+            if (continuation) |prev| switch (prev) {
+                .install => {
+                    // Now that the newest version is installed, we can remove the currently active version
+                    if (active) |curr| {
+                        version = curr;
+                        continuation = .upgrade;
+                        continue :sw .remove;
+                    } else {
+                        continuation = null;
+                        continue :sw .@"switch";
+                    }
+                },
+                .remove => {
+                    // Now that we have removed the previous version we can switch to the newest version it
+                    version = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
+                    continuation = null;
+                    continue :sw .@"switch";
+                },
+                else => @panic("Unrecognized continuation sequence"),
+            } else {
+                // First install newest version
+                continuation = .upgrade;
+                active =
+                    if ((try State.get(init.io, allocator, toolchain_path)).toolchain_active) |a|
+                        try allocator.dupe(u8, a)
+                    else
+                        null;
+                try Registry.delete(init.io, allocator, toolchain_path);
+                version = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
+                continue :sw .install;
+            }
         },
         .remove => {
-            std.log.debug("'remove' command not implemented yet", .{});
-            return 1;
+            try State.removeToolchainInstalled(init.io, allocator, toolchain_path, version);
+            if (continuation) |next| {
+                continuation = .remove;
+                continue :sw next;
+            }
+            return 0;
         },
         .@"switch" => {
             try State.setActiveToolchain(init.io, allocator, toolchain_path, version);
