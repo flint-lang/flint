@@ -156,7 +156,7 @@ pub fn dump(writer: *std.Io.Writer) !void {
     );
 }
 
-pub fn add_toolchain_installed(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, new: []const u8) !void {
+pub fn addToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, new: []const u8) !void {
     std.debug.assert(state != null);
     if (state.?.toolchain_active == null) {
         // Use newly installed version if it is the first version to install
@@ -173,6 +173,31 @@ pub fn add_toolchain_installed(io: std.Io, allocator: std.mem.Allocator, toolcha
         state.?.toolchain_installed = try allocator.realloc(state.?.toolchain_installed, state.?.toolchain_installed.len + 1);
         state.?.toolchain_installed[state.?.toolchain_installed.len - 1] = try allocator.dupe(u8, new);
     }
+
+    try save(io, allocator, toolchain_path);
+}
+
+pub fn setActiveToolchain(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, version: []const u8) !void {
+    _ = try get(io, allocator, toolchain_path);
+
+    for (state.?.toolchain_installed) |installed| {
+        if (std.mem.eql(u8, version, installed)) {
+            // Everything okay, the version we want to switch to is installed
+            break;
+        }
+    } else {
+        std.log.err("Version '{0s}' is not yet install. Run 'flint install {0s}' first.", .{version});
+        return error.VersionNotPresent;
+    }
+
+    if (state.?.toolchain_active) |old_active| {
+        if (std.mem.eql(u8, old_active, version)) {
+            std.log.info("Version '{s}' is already active", .{version});
+            return;
+        }
+        allocator.free(old_active);
+    }
+    state.?.toolchain_active = try allocator.dupe(u8, version);
 
     try save(io, allocator, toolchain_path);
 }
@@ -199,7 +224,10 @@ fn save(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !v
         const target_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}{2s}", .{ toolchain_path, sep, target });
         defer allocator.free(target_path);
 
-        try std.Io.Dir.cwd().deleteFile(io, active_path);
+        std.Io.Dir.cwd().deleteFile(io, active_path) catch |err| switch (err) {
+            error.FileNotFound => {},
+            else => return err,
+        };
         std.log.info("creating symlink {s} -> {s} ...", .{ active_path, target_path });
 
         try std.Io.Dir.cwd().symLink(io, target_path, active_path, .{ .is_directory = true });

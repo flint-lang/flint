@@ -285,7 +285,7 @@ pub fn main(init: std.process.Init) !u8 {
                 try fls_file.setPermissions(init.io, .executable_file);
             }
 
-            try State.add_toolchain_installed(init.io, allocator, toolchain_path, version);
+            try State.addToolchainInstalled(init.io, allocator, toolchain_path, version);
             return 0;
         },
         .update => {
@@ -297,8 +297,8 @@ pub fn main(init: std.process.Init) !u8 {
             return 1;
         },
         .@"switch" => {
-            std.log.debug("'switch' command not implemented yet", .{});
-            return 1;
+            try State.setActiveToolchain(init.io, allocator, toolchain_path, version);
+            return 0;
         },
         .init => return init_cmd.main(init.io, allocator, iter),
         .fetch => return fetch_cmd.main(init.io, allocator, iter),
