@@ -219,7 +219,12 @@ pub fn main(init: std.process.Init) !u8 {
                 out_buffer[try stdin.streamDelimiter(&out, '\n')] = '\n';
                 switch (out_buffer[0]) {
                     'y', 'Y' => {},
-                    'n', 'N', '\n' => return 0,
+                    'n', 'N', '\n' => if (continuation) |next| {
+                        continuation = .install;
+                        continue :sw next;
+                    } else {
+                        return 0;
+                    },
                     else => {
                         std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out_buffer[0]});
                         return 1;
