@@ -79,6 +79,44 @@ pub fn downloadFile(io: std.Io, allocator: std.mem.Allocator, url: []const u8, f
     progress.finish();
 }
 
+pub fn checkFileIntegrity(
+    io: std.Io,
+    allocator: std.mem.Allocator,
+    absolute_file_path: []const u8,
+    expected_sha256: []const u8,
+) !void {
+    std.log.info("Checking file integrity for {s} ...", .{absolute_file_path});
+
+    const computed_hash: []const u8 = try computeFileSHA256(io, allocator, absolute_file_path);
+    defer allocator.free(computed_hash);
+    if (!std.mem.eql(u8, computed_hash, expected_sha256)) {
+        std.log.err("SHA256 hash mismatch for {s}\n\tExpected: {s}\n\tGot: {s}", .{
+            absolute_file_path,
+            expected_sha256,
+            computed_hash,
+        });
+        return error.HashMismatch;
+    }
+
+    std.log.info("File integrity check for {s} was successful", .{absolute_file_path});
+}
+
+/// Caller must free the returned string.
+fn computeFileSHA256(io: std.Io, allocator: std.mem.Allocator, file_path: []const u8) ![]const u8 {
+    const file = try std.Io.Dir.cwd().openFile(io, file_path, .{});
+    defer file.close(io);
+
+    const file_contents = try std.Io.Dir.cwd().readFileAlloc(io, file_path, allocator, .unlimited);
+    defer allocator.free(file_contents);
+
+    // Compute SHA256 hash
+    var hash: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(file_contents, &hash, .{});
+
+    // Convert hash to lowercase hex string
+    return try allocator.dupe(u8, &std.fmt.bytesToHex(&hash, .lower));
+}
+
 const Progress = struct {
     io: std.Io,
     writer: *std.Io.Writer,

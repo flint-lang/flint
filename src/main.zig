@@ -272,6 +272,7 @@ pub fn main(init: std.process.Init) !u8 {
             const toolchain_install_path = try std.fmt.allocPrint(allocator, "{s}{c}{s}", .{ toolchain_versions_path, sep, version });
             defer allocator.free(toolchain_install_path);
             try std.Io.Dir.cwd().createDirPath(init.io, toolchain_install_path);
+            errdefer std.Io.Dir.cwd().deleteTree(init.io, toolchain_install_path) catch @panic("Dir Deletion Failed");
 
             const toolchain_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}bin", .{ toolchain_install_path, sep });
             defer allocator.free(toolchain_bin_path);
@@ -284,7 +285,10 @@ pub fn main(init: std.process.Init) !u8 {
             defer allocator.free(fls_bin_path);
 
             try net.downloadFile(init.io, allocator, flintc.url, flintc_bin_path);
+            try net.checkFileIntegrity(init.io, allocator, flintc_bin_path, flintc.shasum);
+
             try net.downloadFile(init.io, allocator, fls.url, fls_bin_path);
+            try net.checkFileIntegrity(init.io, allocator, fls_bin_path, fls.shasum);
 
             if (builtin.os.tag != .windows) {
                 const flintc_file = try std.Io.Dir.cwd().openFile(init.io, flintc_bin_path, .{});
