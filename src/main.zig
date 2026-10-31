@@ -143,6 +143,11 @@ pub fn main(init: std.process.Init) !u8 {
                 return 1;
             };
 
+            if (command == .remove or command == .@"switch") {
+                // We dont need to verify the version and consolidate the registry, as for these commands the information whether
+                // they are installed at all is enough
+                break :blk _version;
+            }
             var iter_toolchain = (try Registry.get(init.io, allocator, toolchain_path)).toolchain.iterator();
             const version_found: bool = blk2: while (iter_toolchain.next()) |toolchain| {
                 if (std.mem.eql(u8, toolchain.key_ptr.*, _version)) {
