@@ -180,6 +180,29 @@ pub fn addToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain
 pub fn removeToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, version: []const u8) !void {
     _ = try get(io, allocator, toolchain_path);
 
+    var new_list: std.ArrayList([]const u8) = .empty;
+    defer new_list.deinit(allocator);
+    var removal_id: ?usize = null;
+    for (state.?.toolchain_installed, 0..) |installed, i| {
+        if (std.mem.eql(u8, version, installed)) {
+            std.debug.assert(removal_id == null);
+            removal_id = i;
+            continue;
+        }
+        try new_list.append(allocator, installed);
+    } else if (removal_id) |id| {
+        const version_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}{2s}", .{ toolchain_path, std.Io.Dir.path.sep, version });
+        defer allocator.free(version_path);
+        try std.Io.Dir.cwd().deleteTree(io, version_path);
+        allocator.free(state.?.toolchain_installed[id]);
+    } else {
+        std.log.err("Version '{0s}' is not installed and thus cannot be removed", .{version});
+        return error.VersionNotPresent;
+    }
+    const new_list_slice = try new_list.toOwnedSlice(allocator);
+    allocator.free(state.?.toolchain_installed);
+    state.?.toolchain_installed = new_list_slice;
+
     if (state.?.toolchain_active) |active| {
         if (std.mem.eql(u8, version, active)) {
             // We are removing the currently active version, meaning that no version is active any more
@@ -187,28 +210,6 @@ pub fn removeToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolch
             state.?.toolchain_active = null;
         }
     }
-
-    var new_list: std.ArrayList([]const u8) = .empty;
-    defer new_list.deinit(allocator);
-    var removed: bool = false;
-    for (state.?.toolchain_installed) |installed| {
-        if (std.mem.eql(u8, version, installed)) {
-            std.debug.assert(!removed);
-            allocator.free(installed);
-
-            const version_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}{2s}", .{ toolchain_path, std.Io.Dir.path.sep, version });
-            defer allocator.free(version_path);
-            try std.Io.Dir.cwd().deleteTree(io, version_path);
-            removed = true;
-            continue;
-        }
-        try new_list.append(allocator, installed);
-    } else if (!removed) {
-        std.log.err("Version '{0s}' is not installed and thus cannot be removed", .{version});
-        return error.VersionNotPresent;
-    }
-    allocator.free(state.?.toolchain_installed);
-    state.?.toolchain_installed = try new_list.toOwnedSlice(allocator);
 
     try save(io, allocator, toolchain_path);
 }
