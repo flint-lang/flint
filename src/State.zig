@@ -71,6 +71,7 @@ pub fn deinit(allocator: std.mem.Allocator) void {
         }
         allocator.free(state.?.fip_installed.c);
     }
+    state = null;
 }
 
 pub fn dump(writer: *std.Io.Writer) !void {
