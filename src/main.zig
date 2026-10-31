@@ -81,7 +81,8 @@ pub fn main(init: std.process.Init) !u8 {
     // const allocator = gpa.allocator();
     const allocator = init.gpa;
 
-    var stdin_reader = std.Io.File.stdin().reader(init.io, &.{});
+    var stdin_buffer: [16]u8 = @splat(0);
+    var stdin_reader = std.Io.File.stdin().reader(init.io, &stdin_buffer);
     const stdin = &stdin_reader.interface;
     var stdout_writer = std.Io.File.stdout().writer(init.io, &.{});
     const stdout = &stdout_writer.interface;
@@ -213,13 +214,14 @@ pub fn main(init: std.process.Init) !u8 {
             } else false;
             if (already_installed) {
                 try stdout.print("Version '{s}' is already installed. Do you want to re-install it? [y/N] ", .{version});
-                var out: [1]u8 = @splat(0);
-                try stdin.readSliceAll(&out);
-                switch (out[0]) {
+                var out_buffer: [16]u8 = @splat(0);
+                var out: std.Io.Writer = .fixed(&out_buffer);
+                out_buffer[try stdin.streamDelimiter(&out, '\n')] = '\n';
+                switch (out_buffer[0]) {
                     'y', 'Y' => {},
                     'n', 'N', '\n' => return 0,
                     else => {
-                        std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out[0]});
+                        std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out_buffer[0]});
                         return 1;
                     },
                 }
@@ -317,13 +319,14 @@ pub fn main(init: std.process.Init) !u8 {
                 std.log.info("No new Flint version available, newest version is still {s}", .{old_newest});
             } else {
                 try stdout.print("New Flint version found: '{s}'. Do you want to execute 'flint upgrade' now? [y/N] ", .{new_newest});
-                var out: [1]u8 = @splat(0);
-                try stdin.readSliceAll(&out);
-                switch (out[0]) {
+                var out_buffer: [16]u8 = @splat(0);
+                var out: std.Io.Writer = .fixed(&out_buffer);
+                out_buffer[try stdin.streamDelimiter(&out, '\n')] = '\n';
+                switch (out_buffer[0]) {
                     'y', 'Y' => {},
                     'n', 'N', '\n' => return 0,
                     else => {
-                        std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out[0]});
+                        std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out_buffer[0]});
                         return 1;
                     },
                 }
