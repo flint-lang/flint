@@ -1,0 +1,13 @@
+# The configuration is applied project-wide across all parts of the Flint toolchain.
+# [config]
+# indentation = 4
+
+# To depend on other Flint libraries you can use the 'flint' kind, for example the standard
+# library. Extern dependencies can be used in Flint through 'use Std'. To use dependencies
+# which are not written in Flint, you need to set the 'kind' to the specific Interop Module
+# like 'fip-c' for C dependencies.
+[Std]
+kind = "flint"
+url = "https://github.com/flint-lang/std"
+tag = "v0.4.2"
+hash = "TODO"

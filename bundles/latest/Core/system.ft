@@ -1,0 +1,52 @@
+/// @brief Error set of all possible errors of this Core module
+error ErrSystem:
+    EmptyCommand("The provided command was empty"),
+    SpawnFailed("Process could not be created");
+
+/// @brief Executes a given command, captures its output, and returns both the exit code and the
+///        output of the executed command
+///
+/// @param `command` The command to execute, for example "ls -lah"
+/// @return `(i32, str)` A group of:
+///                      `i32` The exit code of the executed command
+///                      `str` The captured output of the executed command
+def system_command(str command) -> (i32, str) {ErrSystem};
+
+/// @brief Returns the current working directory
+///
+/// @return `str` The current working directory
+///
+/// @note The returned path is always an absolute path
+def get_cwd() -> str;
+
+/// @brief Used to convert a given path to the current platform path representation
+///
+/// @param `path` The path to convert
+/// @return `str` The converted path
+///
+/// @note You can pass both Windows and Posix paths to this function, the resulting path will be
+///       correct for the current platform
+def get_path(str path) -> str;
+
+/// @brief Starts capturing stdout and stderr
+///
+/// @note Using output capturing is much faster than string interpolation or string appending
+/// @note Can also be used to silence a given operation, for example:
+///       ```ft
+///       def main():
+///           start_capture();
+///           some_fn_which_prints_a_lot();
+///           _ = end_capture();
+///       ```
+def start_capture();
+
+/// @brief Ends capturing of stdout and stderr, and returns all the captured output as one string
+///
+/// @return `str` The captured output as a single value
+def end_capture() -> str;
+
+/// @brief Ends capturing of stdout and stderr, and returns an array of all lines which were
+///        captured
+///
+/// @return `str[]` The captured output as an array of strings
+def end_capture_lines() -> str[];

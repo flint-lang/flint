@@ -1,0 +1,54 @@
+error ErrIO:
+    OpenFailed("Could not open the file"),
+    NotFound("File does not exist"),
+    NotReadable("Exists but is not readable"),
+    NotWritable("Exists but is not writable (permissions)"),
+    UnexpectedEOF("Hit EOF in the middle of a read");
+
+error ErrFS(ErrIO):
+    TooLarge("File is unreasonably large"),
+    InvalidPath("Path string is malformed");
+
+/// @brief Reads the whole file at the given path and returns the content of the file
+///
+/// @param `path` The path to the file to read
+/// @return `str` The whole file read into one single stream
+def read_file(str path) -> str {ErrIO};
+
+/// @brief Reads the whole file line by line and returns an array of all lines contained in the file
+///
+/// @param `path` The path to the file to read
+/// @return `str[]` All lines present in the given file
+def read_lines(str path) -> str[] {ErrFS};
+
+/// @brief Checks whether the given file exists
+///
+/// @param `path` The path to the file to check
+/// @return `bool` Whether that file exists
+def file_exists(str path) -> bool;
+
+/// @brief Writes the given content to the file at the given path
+///
+/// @param `path` The path to the file to write to
+/// @param `content` The file content to store into the file at the given path
+///
+/// @note A new file will be created if it did not exist already
+/// @note An already existing file will be overwritten
+/// @note Ensures that the written file always ends with a newline character '\n'
+def write_file(str path, str content) {ErrFS};
+
+/// @brief Appends the given content to the file at the given path
+///
+/// @param `path` The path of the file to append to
+/// @param `content` The file content to append to the file at the given path
+///
+/// @note No new file will be created by this function, if the file does not exist this function
+///       will throw ErrFS.NotFound
+/// @note Ensures that the written file always ends with a newline character '\n'
+def append_file(str path, str content) {ErrFS};
+
+/// @brief Checks whether the given path points to a file
+///
+/// @param `path` The path to check
+/// @return `bool` Whether the path points to a file
+def is_file(str path) -> bool;

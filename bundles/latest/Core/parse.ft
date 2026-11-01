@@ -1,0 +1,47 @@
+/// @brief Error set of all possible errors of this Core module
+error ErrParse:
+    OutOfBounds("The input is out of the bounds of the result"),
+    InvalidCharacter("The input contains one or more invalid characters");
+
+/// @brief Parses an unsigned integer value from the given string
+///
+/// @param `value` The value which is tried to be parsed
+/// @return `uN` The parsed unsigned integer value
+///
+/// @note This function ignores all leading or trailing whitespace of the string
+/// @note Throws:
+///       - `InvalidCharacter`: If the string contains any character which is not allowed for
+///                             unsigned integers, e.g any character other than [0..9]
+///       - `OutOfBounds`: If the string is a negative integer like `-5` or above U<N>_MAX
+def parse_u8(str value) -> u8 {ErrParse};
+def parse_u16(str value) -> u16 {ErrParse};
+def parse_u32(str value) -> u32 {ErrParse};
+def parse_u64(str value) -> u64 {ErrParse};
+
+/// @brief Parses a signed integer value from the given string
+///
+/// @param `value` The value which is tried to be parsed
+/// @return `iN` The parsed signed integer value
+///
+/// @note This function ignores all leading or trailing whitespace of the string
+/// @note Throws:
+///       - `InvalidCharacter`: If the string contains any character which is not allowed for
+///                             signed integers, e.g any character other than [0..9] or '-'
+///       - `OutOfBounds`: If the string is a below I<N>_MIN or above I<N>_MAX`
+def parse_i8(str value) -> i8 {ErrParse};
+def parse_i16(str value) -> i16 {ErrParse};
+def parse_i32(str value) -> i32 {ErrParse};
+def parse_i64(str value) -> i64 {ErrParse};
+
+/// @brief Parses a floating point value from the given string
+///
+/// @param `value` The value which is tried to be parsed
+/// @return `fN` The parsed floating point value
+///
+/// @note This function ignores all leading or trailing whitespace of the string
+/// @note Throws:
+///       - `InvalidCharacter`: If the string contains any character which is not allowed for
+///                             floats, e.g any character other than [0..9], '-' or '.'
+///       - `OutOfBounds`: If the passed in value was outside the bounds of a f<N> type
+def parse_f32(str value) -> f32 {ErrParse};
+def parse_f64(str value) -> f64 {ErrParse};

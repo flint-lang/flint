@@ -1,0 +1,63 @@
+/// @brief Shrinks an array by a given amount of elements
+///
+/// @comptime `T` The element type of the array to shrink
+/// @param `arr` The array to shrink
+/// @param `by` The number of elements to shrink the array by
+///
+/// @note `by` is clamped to `arr.len` so passing values of `by` which are larger than `arr.len`
+///       is well-defined
+/// @note Frees all elements from the end of the array which were removed
+def shrink[type T](mut T[] arr, u64 by);
+
+/// @brief Resizes the given array to the given size
+///
+/// @comptime `T` The element type of the array to resize
+/// @param `arr` THe array to resize
+/// @param `size` The size the array will have with after resizing
+///
+/// @note Since it is not known whether the array will grow or shrink at compile-time this function
+///       requires that `T` is default-initializable.
+///       If `T` is not default-initializable calling this function will result in compile errors.
+def resize[type T](mut T[] arr, u64 size);
+
+/// @brief Resizes the given array to the given size
+///
+/// @comptime `T` The element type of the array to resize
+/// @param `arr` The array to resize
+/// @param `size` The size the array will have after resizing
+/// @param `default` The default-value which will be deep-cloned if the array needs to grow
+def resize[type T](mut T[] arr, u64 size, T default);
+
+/// @brief Inserts a given value at the given index into the given array
+///
+/// @comptime `T` The element type of the array to insert a value in
+/// @param `arr` The array to insert the value in
+/// @param `value` The value to insert into the array
+/// @param `i` The index at which to insert the value at
+///
+/// @note The index `i` is clamped to `arr.len`. So if `i >= arr.len` is this
+///       function will act like `append`.
+/// @note General assignment-rules apply for the passed-in `value`, so it will
+///       be deep-cloned if it is complex or just copied if non-complex.
+def insert[type T](mut T[] arr, T value, u64 i);
+
+/// @brief Removes a single element from the given array and returns it
+///
+/// @comptime `T` The element type of the array to remove a value from
+/// @param `arr` The array to remove the value from
+/// @param `i` The index at which to remove the value at
+/// @return `T?` The removed value, `none` if `i` was out of the bounds of the array
+def remove[type T](mut T[] arr, u64 i) -> T?;
+
+/// @brief Merges the `src` array into the `arr` array, starting at index `i`
+///
+/// @comptime `T` The element type of the arrays
+/// @param `arr` The target array in which the `src` array will be merged into
+/// @param `src` The source array being merged into the `arr` array
+/// @param `i` The index at which to merge the arrays
+///
+/// @note `src` will be empty after this call. All elements which were previously at `src` will end
+///       up at `arr[i..(i + src.len)]`. Ownership of all elements within `src` is moved to `arr`.
+/// @note This function does not clone any value, it essentially is just a realloc + up to two
+///       memmoves under the hood.
+def merge[type T](mut T[] arr, mut T[] src, u64 i);

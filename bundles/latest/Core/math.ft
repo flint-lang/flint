@@ -1,0 +1,47 @@
+/// @brief Floating-point based overloads for the `sin` function
+def sin(f32 value) -> f32;
+def sin(f64 value) -> f64;
+
+/// @brief Floating-point based overloads for the `cos` function
+def cos(f32 value) -> f32;
+def cos(f64 value) -> f64;
+
+/// @brief Calculates the square root of the given value
+def sqrt(f32 value) -> f32;
+def sqrt(f64 value) -> f64;
+
+/// @brief Various overloads for the `abs` function
+///
+/// @note The return value of all integer-based abs functions returns the respective unsigned
+///       variant of the input type. This means that abs(INT_N_MIN) = INT_N_MAX + 1 like one would
+///       expect.
+def abs(i8 value) -> u8;
+def abs(i16 value) -> u16;
+def abs(i32 value) -> u32;
+def abs(i64 value) -> u64;
+def abs(f32 value) -> f32;
+def abs(f64 value) -> f64;
+
+/// @brief Returns the smaller one of two given values
+def min(u8 l, u8 r) -> u8;
+def min(i8 l, i8 r) -> i8;
+def min(u16 l, u16 r) -> u16;
+def min(i16 l, i16 r) -> i16;
+def min(u32 l, u32 r) -> u32;
+def min(i32 l, i32 r) -> i32;
+def min(u64 l, u64 r) -> u64;
+def min(i64 l, i64 r) -> i64;
+def min(f32 l, f32 r) -> f32;
+def min(f64 l, f64 r) -> f64;
+
+/// @brief Returns the larger one of two given values
+def max(u8 l, u8 r) -> u8;
+def max(i8 l, i8 r) -> i8;
+def max(u16 l, u16 r) -> u16;
+def max(i16 l, i16 r) -> i16;
+def max(u32 l, u32 r) -> u32;
+def max(i32 l, i32 r) -> i32;
+def max(u64 l, u64 r) -> u64;
+def max(i64 l, i64 r) -> i64;
+def max(f32 l, f32 r) -> f32;
+def max(f64 l, f64 r) -> f64;

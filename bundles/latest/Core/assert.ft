@@ -1,0 +1,8 @@
+/// @brief Error set of all possible errors of this Core module
+error ErrAssert:
+	AssertionFailed("The assertion has failed");
+
+/// @brief Asserts that a given condition is true and throws an error if it is not
+///
+/// @param `condition` The condition to assert is true
+def assert(bool condition) {ErrAssert};

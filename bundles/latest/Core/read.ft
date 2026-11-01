@@ -1,0 +1,31 @@
+/// @brief Error set of all possible errors of this Core module
+error ErrRead:
+    ReadLines("Could not read lines from console"),
+    ParseInt("Could not parse text to integer"),
+    NegativeUint("Negative input not allowed for unsigned integers"),
+    ParseFloat("Could not parse text to floating‑point");
+
+/// @brief Reads user input from stdin as a string
+///
+/// @return `str` One line entered by the user
+///
+/// @note This function does not throw an error because it does not do any parsing whatsoever
+def read_str() -> str;
+
+/// @brief Reads user input from stdin as an unsigned integer
+///
+/// @return `uN` The unsigned integer parsed from the user input
+def read_u32() -> u32 {ErrRead};
+def read_u64() -> u64 {ErrRead};
+
+/// @brief Reads user input from stdin as a signed integer
+///
+/// @return `iN` The signed integer parsed from the user input
+def read_i32() -> i32 {ErrRead};
+def read_i64() -> i64 {ErrRead};
+
+/// @brief Reads user input from stdin as a floating point number
+///
+/// @return `fN` The floating point number parsed from the user input
+def read_f32() -> f32 {ErrRead};
+def read_f64() -> f64 {ErrRead};

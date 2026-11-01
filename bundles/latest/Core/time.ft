@@ -1,0 +1,91 @@
+/// @brief Enum of all time units known to the time Core module
+enum TimeUnit:
+	NS, // Nanoseconds
+	US, // Microseconds
+	MS, // Milliseconds
+	S;  // Seconds
+
+/// @brief A single time stamp measuring the uptime of the system
+///
+/// @note A TimeStamp *always* uses the highest resolution available:
+///       - On Windows, this is ~10 MHz (100 ns) but do *not* assume that TimeStamps are always 100%
+///         precise. Flint uses `QueryPerformanceCounter` under the hood on Windows.
+///         https://learn.microsoft.com/en-us/windows/win32/sysinfo/acquiring-high-resolution-time-stamps
+///       - On Linux, `clock_gettime` with a monotonic clock is used under the hood for time stamp
+///         readouts. Depending on harware, you could get precision of up to 1 ns on Linux but do,
+///         again, not assume any precision here whatsoever.
+///         Linux 7.2 dropped support for CPUs which do not support TSC, so if you are on Linux 7.2
+///         or higher you can assume a precision of ~1 ns
+/// @note As a result of this all, a `TimeStamp` is *unitless*. You should never access its `value`
+///       directly
+data TimeStamp:
+	u64 value;
+
+/// @brief A duration between two time stamps
+///
+/// @note Unlike a `TimeStamp`, which should be handled as unitless, a `Duration`s value *always*
+///       is of unit `TimeUnit.NS`. So, if you need a duration in nanoseconds directly you can
+///       access the `.value` field manually
+data Duration:
+	u64 value;
+
+/// @brief Returns a TimeStamp for the current point in time
+///
+/// @return `TimeStamp` the current timestamp the system is at
+def now() -> TimeStamp;
+
+/// @brief Calculates the duration between two `TimeStamp`s
+///
+/// @param `from` The time stamp we measure from
+/// @param `to` The time stamp we measure to
+/// @return `Duration` The duration `from` `to`
+///
+/// @note The order in which `from` and `to` are passed does not matter because a duration is always
+///       the absolute difference between two time stamps
+def duration(TimeStamp from, TimeStamp to) -> Duration;
+
+/// @brief Returns a `Duration` from a given time + unit
+///
+/// @param `time` The time value to get the duration from
+/// @param `unit` The unit of the duration to create
+/// @return `Duration` A newly created duration from the given time and unit
+///
+/// @note This function is a useful helper to create new durations. So you could either write
+///       ```ft
+///       dur := Duration{ 1_000_000 };
+///       ```
+///       and hope that everyone knows that `Duration` is typed as `NS` or you could write
+///       ```ft
+///       dur := from(1, TimeUnit.MS);
+///       ```
+///       and make things easier to understand.
+def from(u64 time, TimeUnit unit) -> Duration;
+
+
+/// @brief Takes a duration and a unit and returns a `f64` floating point value holding that
+///        duration of the given unit
+///
+/// @param `duration` The duration to convert
+/// @param `unit` The unit to covert the duration to
+/// @return `f64` A floating point value holding the typed duration
+///
+/// @note This function is used the most when *printing* measured durations
+def as_unit(Duration duration, TimeUnit unit) -> f64;
+
+
+/// @brief Sleeps for a given duration
+///
+/// @param `duration` The duration to sleep for
+def sleep(Duration duration);
+
+/// @brief Sleeps for a given duration, passed as a time + a unit
+///
+/// @param `time` The time to sleep for
+/// @param `unit` The unit of the time to sleep for
+///
+/// @note This function exists because writing `sleep(from(100, TimeUnit.MS))` is unergonomic so
+///       writing `sleep(100, TimeUnit.MS)` is a lot better
+/// @note This function does not require a data parameter meanin it results in no allocations when
+///       being called. If you sleep for a fixed amount of time in a hot loop, prefer this function
+///       over the Duration-based overload.
+def sleep(u64 time, TimeUnit unit);

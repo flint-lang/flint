@@ -1,0 +1,18 @@
+/// @brief Various overloads of the print function
+///
+/// @param `value` The value to print
+///
+/// @note No `print` function inserts a newline after printing the value
+def print(u8 value);
+def print(i8 value);
+def print(u16 value);
+def print(i16 value);
+def print(u32 value);
+def print(i32 value);
+def print(u64 value);
+def print(i64 value);
+def print(f32 value);
+def print(f64 value);
+def print(str value);
+/// @note Prints 'true' or 'false'
+def print(bool value);
