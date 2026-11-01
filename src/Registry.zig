@@ -16,8 +16,14 @@ pub const Artifact = struct {
     shasum: []const u8,
 };
 
+pub const Bundle = struct {
+    id: []const u8,
+    shasum: []const u8,
+};
+
 pub const ToolchainRelease = struct {
     fip_version: []const u8,
+    bundles: []const Bundle,
     artifacts: std.StringArrayHashMapUnmanaged(PlatformArtifacts),
 
     pub const PlatformArtifacts = struct {
@@ -36,9 +42,11 @@ pub const ToolchainRelease = struct {
     ) !ToolchainRelease {
         var release: ToolchainRelease = .{
             .fip_version = undefined,
+            .bundles = undefined,
             .artifacts = .empty,
         };
         var fip_version_parsed: bool = false;
+        var bundles_parsed: bool = false;
         var artifacts_parsed: bool = false;
         errdefer release.deinit(allocator, fip_version_parsed);
 
@@ -54,6 +62,18 @@ pub const ToolchainRelease = struct {
                     },
                 };
                 fip_version_parsed = true;
+            } else if (std.mem.eql(u8, field_name.get(zoir), "bundles")) {
+                if (bundles_parsed) {
+                    return error.DuplicateField;
+                }
+                release.bundles = try std.zon.parse.fromZoir([]const Bundle, .{
+                    .arena = arena,
+                    .ast = ast,
+                    .zoir = zoir,
+                    .node = vals.at(@intCast(i)),
+                    .diagnostics = diagnostics,
+                });
+                bundles_parsed = true;
             } else if (std.mem.eql(u8, field_name.get(zoir), "artifacts")) {
                 if (artifacts_parsed) {
                     return error.DuplicateField;
@@ -78,6 +98,9 @@ pub const ToolchainRelease = struct {
             }
         }
         if (!fip_version_parsed) {
+            return error.MissingField;
+        }
+        if (!bundles_parsed) {
             return error.MissingField;
         }
         if (!artifacts_parsed) {
@@ -322,12 +345,31 @@ pub fn dump(writer: *std.Io.Writer) !void {
         try writer.print(
             \\        .@"{s}" = .{{
             \\            .fip_version = "{s}",
-            \\            .artifacts = .{{
             \\
         , .{
             release.key_ptr.*,
             toolchain_release.fip_version,
         });
+        try writer.writeAll(
+            \\            .bundles = .{
+        );
+        if (toolchain_release.bundles.len == 0) {
+            try writer.writeAll(
+                \\},
+                \\
+            );
+        } else {
+            for (toolchain_release.bundles) |bundle| {
+                try writer.print(
+                    \\                .{ .id = "{s}", .shasum = "{s}" },
+                    \\
+                , .{ bundle.id, bundle.shasum });
+            }
+        }
+        try writer.writeAll(
+            \\            .artifacts = .{{
+            \\
+        );
         var iter_artifacts = toolchain_release.artifacts.iterator();
         while (iter_artifacts.next()) |artifact| {
             const flintc = artifact.value_ptr.flintc;

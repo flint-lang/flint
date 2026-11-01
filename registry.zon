@@ -2,6 +2,9 @@
     .toolchain = .{
         .@"v0.4.2-core" = .{
             .fip_version = "v0.4.1",
+            .bundles = .{
+                .{ .id = "v0.4.2-core-r0", .shasum = "TODO" },
+            },
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -27,6 +30,7 @@
         },
         .@"v0.4.1-core" = .{
             .fip_version = "v0.4.1",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -52,6 +56,7 @@
         },
         .@"v0.4.0-core" = .{
             .fip_version = "v0.4.0",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -77,6 +82,7 @@
         },
         .@"v0.3.5-core" = .{
             .fip_version = "v0.3.2",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -102,6 +108,7 @@
         },
         .@"v0.3.4-core" = .{
             .fip_version = "v0.3.2",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -127,6 +134,7 @@
         },
         .@"v0.3.3-core" = .{
             .fip_version = "v0.3.2",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -152,6 +160,7 @@
         },
         .@"v0.3.2-core" = .{
             .fip_version = "v0.3.2",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -177,6 +186,7 @@
         },
         .@"v0.3.1-core" = .{
             .fip_version = "v0.3.0",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -202,6 +212,7 @@
         },
         .@"v0.3.0-core" = .{
             .fip_version = "v0.3.0",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -227,6 +238,7 @@
         },
         .@"v0.2.5-core" = .{
             .fip_version = "v0.2.5",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -252,6 +264,7 @@
         },
         .@"v0.2.4-core" = .{
             .fip_version = "v0.2.3",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -277,6 +290,7 @@
         },
         .@"v0.2.3-core" = .{
             .fip_version = "v0.2.3",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
@@ -303,6 +317,7 @@
         // 0.2.2 is the oldest version to contain a language server, this is why its the oldest version in the registry
         .@"v0.2.2-core" = .{
             .fip_version = "v0.2.1",
+            .bundles = .{},
             .artifacts = .{
                 .@"x86_64-linux" = .{
                     .flintc = .{
