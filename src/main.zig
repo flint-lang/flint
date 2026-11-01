@@ -137,7 +137,7 @@ pub fn main(init: std.process.Init) !u8 {
             });
             defer version_res.deinit();
             const _version = version_res.positionals[0] orelse if (command == .install)
-                try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path)
+                try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path)
             else {
                 std.log.err("Missing required argument <version> for '{s}' command", .{@tagName(command)});
                 try printHelp(stderr);
@@ -149,7 +149,7 @@ pub fn main(init: std.process.Init) !u8 {
                 // they are installed at all is enough
                 break :blk _version;
             }
-            var iter_toolchain = (try Registry.get(init.io, allocator, toolchain_path)).toolchain.iterator();
+            var iter_toolchain = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain.iterator();
             const version_found: bool = blk2: while (iter_toolchain.next()) |toolchain| {
                 if (std.mem.eql(u8, toolchain.key_ptr.*, _version)) {
                     break :blk2 true;
@@ -178,7 +178,7 @@ pub fn main(init: std.process.Init) !u8 {
         .fip => return fip_cmd.main(init.io, allocator, iter),
         .target => return target_cmd.main(init.io, allocator, iter),
         .list => {
-            var iter_toolchain = (try Registry.get(init.io, allocator, toolchain_path)).toolchain.iterator();
+            var iter_toolchain = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain.iterator();
             try stdout.writeAll("Available Flint versions:\n");
             var current = iter_toolchain.next();
             while (current) |toolchain| {
@@ -188,13 +188,13 @@ pub fn main(init: std.process.Init) !u8 {
                 } else {
                     try stdout.print(" └─ {s}", .{toolchain.key_ptr.*});
                 }
-                for ((try State.get(init.io, allocator, toolchain_path)).toolchain_installed) |installed| {
+                for ((try State.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain_installed) |installed| {
                     if (std.mem.eql(u8, installed, toolchain.key_ptr.*)) {
                         try stdout.writeAll(" [installed]");
                         break;
                     }
                 }
-                if ((try State.get(init.io, allocator, toolchain_path)).toolchain_active) |a| {
+                if ((try State.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain_active) |a| {
                     if (std.mem.eql(u8, a, toolchain.key_ptr.*)) {
                         try stdout.writeAll(" [active]");
                     }
@@ -207,7 +207,12 @@ pub fn main(init: std.process.Init) !u8 {
         },
         .install => {
             // Check if the to-be-installed version is already installed
-            const already_installed: bool = blk: for ((try State.get(init.io, allocator, toolchain_path)).toolchain_installed) |installed| {
+            const already_installed: bool = blk: for ((try State.get(
+                init.io,
+                allocator,
+                init.arena.allocator(),
+                toolchain_path,
+            )).toolchain_installed) |installed| {
                 if (std.mem.eql(u8, installed, version)) {
                     break :blk true;
                 }
@@ -231,7 +236,7 @@ pub fn main(init: std.process.Init) !u8 {
                     },
                 }
             }
-            const release = (try Registry.get(init.io, allocator, toolchain_path)).toolchain.get(version).?;
+            const release = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain.get(version).?;
             var iter_artifacts = release.artifacts.iterator();
             const artifact: ?Registry.ToolchainRelease.PlatformArtifacts = blk: while (iter_artifacts.next()) |artifact| {
                 var split_iterator = std.mem.splitScalar(u8, artifact.key_ptr.*, '-');
@@ -316,10 +321,15 @@ pub fn main(init: std.process.Init) !u8 {
             return 0;
         },
         .update => {
-            const old_newest: []const u8 = try allocator.dupe(u8, (try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path)));
+            const old_newest: []const u8 = try allocator.dupe(u8, (try Registry.getNewestToolchainVersion(
+                init.io,
+                allocator,
+                init.arena.allocator(),
+                toolchain_path,
+            )));
             defer allocator.free(old_newest);
             try Registry.delete(init.io, allocator, toolchain_path);
-            const new_newest = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
+            const new_newest = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
             if (std.mem.eql(u8, old_newest, new_newest)) {
                 std.log.info("No new Flint version available, newest version is still {s}", .{old_newest});
             } else {
@@ -335,7 +345,7 @@ pub fn main(init: std.process.Init) !u8 {
                         return 1;
                     },
                 }
-                version = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
+                version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
                 continue :sw .upgrade;
             }
             return 0;
@@ -360,7 +370,7 @@ pub fn main(init: std.process.Init) !u8 {
                 },
                 .remove => {
                     // Now that we have removed the previous version we can switch to the newest version it
-                    version = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
+                    version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
                     continuation = null;
                     continue :sw .@"switch";
                 },
@@ -369,17 +379,17 @@ pub fn main(init: std.process.Init) !u8 {
                 // First install newest version
                 continuation = .upgrade;
                 active =
-                    if ((try State.get(init.io, allocator, toolchain_path)).toolchain_active) |a|
+                    if ((try State.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain_active) |a|
                         try allocator.dupe(u8, a)
                     else
                         null;
                 try Registry.delete(init.io, allocator, toolchain_path);
-                version = try Registry.getNewestToolchainVersion(init.io, allocator, toolchain_path);
+                version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
                 continue :sw .install;
             }
         },
         .remove => {
-            try State.removeToolchainInstalled(init.io, allocator, toolchain_path, version);
+            try State.removeToolchainInstalled(init.io, allocator, init.arena.allocator(), toolchain_path, version);
             if (continuation) |next| {
                 continuation = .remove;
                 continue :sw next;
@@ -387,7 +397,7 @@ pub fn main(init: std.process.Init) !u8 {
             return 0;
         },
         .@"switch" => {
-            try State.setActiveToolchain(init.io, allocator, toolchain_path, version);
+            try State.setActiveToolchain(init.io, allocator, init.arena.allocator(), toolchain_path, version);
             return 0;
         },
         .init => return init_cmd.main(init.io, allocator, iter),

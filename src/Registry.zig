@@ -14,11 +14,6 @@ fip: std.StringArrayHashMapUnmanaged(FipRelease),
 pub const Artifact = struct {
     url: []const u8,
     shasum: []const u8,
-
-    pub fn deinit(self: *Artifact, allocator: std.mem.Allocator) void {
-        allocator.free(self.url);
-        allocator.free(self.shasum);
-    }
 };
 
 pub const ToolchainRelease = struct {
@@ -32,8 +27,10 @@ pub const ToolchainRelease = struct {
 
     pub fn parse(
         allocator: std.mem.Allocator,
-        zoir: std.zig.Zoir,
-        ast: std.zig.Ast,
+        arena: std.mem.Allocator,
+        zoir: *std.zig.Zoir,
+        ast: *std.zig.Ast,
+        diagnostics: *std.zon.parse.Diagnostics,
         names: []const std.zig.Zoir.NullTerminatedString,
         vals: std.zig.Zoir.Node.Index.Range,
     ) !ToolchainRelease {
@@ -68,16 +65,13 @@ pub const ToolchainRelease = struct {
                     },
                 };
                 for (artifacts_struct.names, 0..artifacts_struct.vals.len) |platform_node, j| {
-                    const artifact =
-                        try std.zon.parse.fromZoirNodeAlloc(
-                            PlatformArtifacts,
-                            allocator,
-                            ast,
-                            zoir,
-                            artifacts_struct.vals.at(@intCast(j)),
-                            null,
-                            .{},
-                        );
+                    const artifact = try std.zon.parse.fromZoir(PlatformArtifacts, .{
+                        .arena = arena,
+                        .ast = ast,
+                        .zoir = zoir,
+                        .node = artifacts_struct.vals.at(@intCast(j)),
+                        .diagnostics = diagnostics,
+                    });
                     try release.artifacts.put(allocator, try allocator.dupe(u8, platform_node.get(zoir)), artifact);
                 }
                 artifacts_parsed = true;
@@ -99,8 +93,6 @@ pub const ToolchainRelease = struct {
         var iter = self.artifacts.iterator();
         while (iter.next()) |*artifacts| {
             allocator.free(artifacts.key_ptr.*);
-            artifacts.value_ptr.flintc.deinit(allocator);
-            artifacts.value_ptr.fls.deinit(allocator);
         }
         self.artifacts.deinit(allocator);
     }
@@ -111,8 +103,10 @@ pub const FipRelease = struct {
 
     pub fn parse(
         allocator: std.mem.Allocator,
-        zoir: std.zig.Zoir,
-        ast: std.zig.Ast,
+        arena: std.mem.Allocator,
+        zoir: *std.zig.Zoir,
+        ast: *std.zig.Ast,
+        diagnostics: *std.zon.parse.Diagnostics,
         names: []const std.zig.Zoir.NullTerminatedString,
         vals: std.zig.Zoir.Node.Index.Range,
     ) !FipRelease {
@@ -135,16 +129,13 @@ pub const FipRelease = struct {
                     return error.DuplicateField;
                 }
                 for (language_struct.names, 0..language_struct.vals.len) |platform_node, j| {
-                    const artifact =
-                        try std.zon.parse.fromZoirNodeAlloc(
-                            Artifact,
-                            allocator,
-                            ast,
-                            zoir,
-                            language_struct.vals.at(@intCast(j)),
-                            null,
-                            .{},
-                        );
+                    const artifact = try std.zon.parse.fromZoir(Artifact, .{
+                        .arena = arena,
+                        .ast = ast,
+                        .zoir = zoir,
+                        .node = language_struct.vals.at(@intCast(j)),
+                        .diagnostics = diagnostics,
+                    });
                     try release.c.put(allocator, try allocator.dupe(u8, platform_node.get(zoir)), artifact);
                 }
                 c_parsed = true;
@@ -160,18 +151,17 @@ pub const FipRelease = struct {
         var iter = self.c.iterator();
         while (iter.next()) |*artifact| {
             allocator.free(artifact.key_ptr.*);
-            artifact.value_ptr.deinit(allocator);
         }
         self.c.deinit(allocator);
     }
 };
 
-pub fn getNewestToolchainVersion(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) ![]const u8 {
-    _ = try get(io, allocator, toolchain_path);
+pub fn getNewestToolchainVersion(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, toolchain_path: []const u8) ![]const u8 {
+    _ = try get(io, allocator, arena, toolchain_path);
     return newest_toolchain_release.?;
 }
 
-pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !Self {
+pub fn get(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, toolchain_path: []const u8) !Self {
     if (registry) |reg| {
         return reg;
     }
@@ -179,16 +169,16 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
     const registry_content = try getRegistryFileContent(io, allocator, toolchain_path);
     defer allocator.free(registry_content);
 
-    var diag_zon: std.zon.parse.Diagnostics = .{};
-    defer diag_zon.deinit(allocator);
+    var diag_zon: std.zon.parse.Diagnostics = undefined;
+    errdefer diag_zon.log("registry.zon");
 
-    var ast = try std.zig.Ast.parse(allocator, registry_content, .zon);
+    var ast = try std.zig.Ast.parse(allocator, registry_content, .{ .mode = .zon });
     defer ast.deinit(allocator);
 
     var zoir = try std.zig.ZonGen.generate(allocator, ast, .{ .parse_str_lits = true });
     defer zoir.deinit(allocator);
 
-    const root = std.zig.Zoir.Node.Index.root.get(zoir);
+    const root = std.zig.Zoir.Node.Index.root.get(&zoir);
     const root_struct = switch (root) {
         .struct_literal => |s| s,
         else => return error.ExpectedStruct,
@@ -203,33 +193,35 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
     var fip_parsed: bool = false;
 
     for (root_struct.names, 0..root_struct.vals.len) |name_node, f| {
-        const name = name_node.get(zoir);
+        const name = name_node.get(&zoir);
         const value_node = root_struct.vals.at(@intCast(f));
 
         if (std.mem.eql(u8, name, "toolchain")) {
             if (toolchain_parsed) {
                 return error.DuplicateField;
             }
-            const toolchain_struct = switch (value_node.get(zoir)) {
+            const toolchain_struct = switch (value_node.get(&zoir)) {
                 .struct_literal => |s| s,
                 else => return error.ExpectedStruct,
             };
             for (toolchain_struct.names, 0..toolchain_struct.vals.len) |version, j| {
-                const release_struct = switch (toolchain_struct.vals.at(@intCast(j)).get(zoir)) {
+                const release_struct = switch (toolchain_struct.vals.at(@intCast(j)).get(&zoir)) {
                     .struct_literal => |s| s,
                     else => return error.ExpectedStruct,
                 };
                 const release = try ToolchainRelease.parse(
                     allocator,
-                    zoir,
-                    ast,
+                    arena,
+                    &zoir,
+                    &ast,
+                    &diag_zon,
                     release_struct.names,
                     release_struct.vals,
                 );
-                try registry.?.toolchain.put(allocator, try allocator.dupe(u8, version.get(zoir)), release);
+                try registry.?.toolchain.put(allocator, try allocator.dupe(u8, version.get(&zoir)), release);
                 if (newest_toolchain_release == null) {
                     // The first release to be parsed is always the newest release
-                    newest_toolchain_release = try allocator.dupe(u8, version.get(zoir));
+                    newest_toolchain_release = try allocator.dupe(u8, version.get(&zoir));
                 }
             }
             toolchain_parsed = true;
@@ -237,23 +229,25 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
             if (fip_parsed) {
                 return error.DuplicateField;
             }
-            const fip_struct = switch (value_node.get(zoir)) {
+            const fip_struct = switch (value_node.get(&zoir)) {
                 .struct_literal => |s| s,
                 else => return error.ExpectedStruct,
             };
             for (fip_struct.names, 0..fip_struct.vals.len) |version, j| {
-                const release_struct = switch (fip_struct.vals.at(@intCast(j)).get(zoir)) {
+                const release_struct = switch (fip_struct.vals.at(@intCast(j)).get(&zoir)) {
                     .struct_literal => |s| s,
                     else => return error.ExpectedStruct,
                 };
                 const release = try FipRelease.parse(
                     allocator,
-                    zoir,
-                    ast,
+                    arena,
+                    &zoir,
+                    &ast,
+                    &diag_zon,
                     release_struct.names,
                     release_struct.vals,
                 );
-                try registry.?.fip.put(allocator, try allocator.dupe(u8, version.get(zoir)), release);
+                try registry.?.fip.put(allocator, try allocator.dupe(u8, version.get(&zoir)), release);
             }
             fip_parsed = true;
         }
@@ -268,7 +262,7 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
 
     var stdout_writer = std.Io.File.stdout().writer(io, &.{});
     const stdout = &stdout_writer.interface;
-    try diag_zon.format(stdout);
+    try diag_zon.fmt("registry.zon").format(stdout);
 
     return registry.?;
 }
@@ -300,12 +294,9 @@ pub fn deinit(allocator: std.mem.Allocator) void {
 
 pub fn delete(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
     deinit(allocator);
+    registry = null;
 
-    const registry_path: []const u8 = switch (builtin.os.tag) {
-        .windows => try std.fmt.allocPrint(allocator, "{s}\\registry.zon", .{toolchain_path}),
-        .linux => try std.fmt.allocPrint(allocator, "{s}/registry.zon", .{toolchain_path}),
-        else => @panic("Unsupported OS"),
-    };
+    const registry_path = try std.fmt.allocPrint(allocator, "{s}{c}registry.zon", .{ toolchain_path, std.Io.Dir.path.sep });
     defer allocator.free(registry_path);
 
     std.Io.Dir.cwd().deleteFile(io, registry_path) catch |err| switch (err) {

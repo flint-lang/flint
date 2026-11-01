@@ -12,7 +12,7 @@ fip_installed: struct {
     c: [][]const u8,
 },
 
-pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !Self {
+pub fn get(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, toolchain_path: []const u8) !Self {
     if (state) |s| {
         return s;
     }
@@ -45,7 +45,31 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8)
     const state_file_content_z = try allocator.dupeSentinel(u8, state_file_content, 0);
     defer allocator.free(state_file_content_z);
 
-    state = try std.zon.parse.fromSliceAlloc(Self, allocator, state_file_content_z, null, .{});
+    var diag_zon: std.zon.parse.Diagnostics = undefined;
+    errdefer diag_zon.log("state.zon");
+    state = try std.zon.parse.fromSlice(Self, .{
+        .gpa = allocator,
+        .arena = arena,
+        .source = state_file_content_z,
+        .diagnostics = &diag_zon,
+    });
+    // Manually clone the fields because they may be changed at runtime later on
+    if (state.?.toolchain_active) |active| {
+        state.?.toolchain_active = try allocator.dupe(u8, active);
+    }
+    const new_toolchain = try allocator.alloc([]const u8, state.?.toolchain_installed.len);
+    for (0..state.?.toolchain_installed.len) |i| {
+        new_toolchain[i] = try allocator.dupe(u8, state.?.toolchain_installed[i]);
+    }
+    state.?.toolchain_installed = new_toolchain;
+    if (state.?.fip_active) |active| {
+        state.?.fip_active = try allocator.dupe(u8, active);
+    }
+    const new_fip_c = try allocator.alloc([]const u8, state.?.fip_installed.c.len);
+    for (0..state.?.fip_installed.c.len) |i| {
+        new_fip_c[i] = try allocator.dupe(u8, state.?.fip_installed.c[i]);
+    }
+    state.?.fip_installed.c = new_fip_c;
     return state.?;
 }
 
@@ -178,8 +202,14 @@ pub fn addToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain
     try save(io, allocator, toolchain_path);
 }
 
-pub fn removeToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, version: []const u8) !void {
-    _ = try get(io, allocator, toolchain_path);
+pub fn removeToolchainInstalled(
+    io: std.Io,
+    allocator: std.mem.Allocator,
+    arena: std.mem.Allocator,
+    toolchain_path: []const u8,
+    version: []const u8,
+) !void {
+    _ = try get(io, allocator, arena, toolchain_path);
 
     var new_list: std.ArrayList([]const u8) = .empty;
     defer new_list.deinit(allocator);
@@ -215,8 +245,14 @@ pub fn removeToolchainInstalled(io: std.Io, allocator: std.mem.Allocator, toolch
     try save(io, allocator, toolchain_path);
 }
 
-pub fn setActiveToolchain(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, version: []const u8) !void {
-    _ = try get(io, allocator, toolchain_path);
+pub fn setActiveToolchain(
+    io: std.Io,
+    allocator: std.mem.Allocator,
+    arena: std.mem.Allocator,
+    toolchain_path: []const u8,
+    version: []const u8,
+) !void {
+    _ = try get(io, allocator, arena, toolchain_path);
 
     for (state.?.toolchain_installed) |installed| {
         if (std.mem.eql(u8, version, installed)) {
