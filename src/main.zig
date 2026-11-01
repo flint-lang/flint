@@ -21,11 +21,11 @@ const SubCommand = enum {
     target,
     // Core commands
     list,
-    install,
     update,
     upgrade,
     remove,
     @"switch",
+    install,
     // Build-related commands
     init,
     fetch,
@@ -205,6 +205,86 @@ pub fn main(init: std.process.Init) !u8 {
             try stdout.flush();
             return 0;
         },
+        .update => {
+            const old_newest: []const u8 = try allocator.dupe(u8, (try Registry.getNewestToolchainVersion(
+                init.io,
+                allocator,
+                init.arena.allocator(),
+                toolchain_path,
+            )));
+            defer allocator.free(old_newest);
+            try Registry.delete(init.io, allocator, toolchain_path);
+            const new_newest = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
+            if (std.mem.eql(u8, old_newest, new_newest)) {
+                std.log.info("No new Flint version available, newest version is still {s}", .{old_newest});
+            } else {
+                try stdout.print("New Flint version found: '{s}'. Do you want to execute 'flint upgrade' now? [y/N] ", .{new_newest});
+                var out_buffer: [16]u8 = @splat(0);
+                var out: std.Io.Writer = .fixed(&out_buffer);
+                out_buffer[try stdin.streamDelimiter(&out, '\n')] = '\n';
+                switch (out_buffer[0]) {
+                    'y', 'Y' => {},
+                    'n', 'N', '\n' => return 0,
+                    else => {
+                        std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out_buffer[0]});
+                        return 1;
+                    },
+                }
+                version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
+                continue :sw .upgrade;
+            }
+            return 0;
+        },
+        .upgrade => {
+            if (continuation) |prev| switch (prev) {
+                .install => {
+                    // Now that the newest version is installed, we can remove the currently active version
+                    if (active) |curr| {
+                        if (std.mem.eql(u8, curr, version)) {
+                            // We try to switch to the already active version, removing that would be a bug, so we just switch
+                            continuation = null;
+                            continue :sw .@"switch";
+                        }
+                        version = curr;
+                        continuation = .upgrade;
+                        continue :sw .remove;
+                    } else {
+                        continuation = null;
+                        continue :sw .@"switch";
+                    }
+                },
+                .remove => {
+                    // Now that we have removed the previous version we can switch to the newest version it
+                    version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
+                    continuation = null;
+                    continue :sw .@"switch";
+                },
+                else => @panic("Unrecognized continuation sequence"),
+            } else {
+                // First install newest version
+                continuation = .upgrade;
+                active =
+                    if ((try State.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain_active) |a|
+                        try allocator.dupe(u8, a)
+                    else
+                        null;
+                try Registry.delete(init.io, allocator, toolchain_path);
+                version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
+                continue :sw .install;
+            }
+        },
+        .remove => {
+            try State.removeToolchainInstalled(init.io, allocator, init.arena.allocator(), toolchain_path, version);
+            if (continuation) |next| {
+                continuation = .remove;
+                continue :sw next;
+            }
+            return 0;
+        },
+        .@"switch" => {
+            try State.setActiveToolchain(init.io, allocator, init.arena.allocator(), toolchain_path, version);
+            return 0;
+        },
         .install => {
             // Check if the to-be-installed version is already installed
             const already_installed: bool = blk: for ((try State.get(
@@ -320,86 +400,6 @@ pub fn main(init: std.process.Init) !u8 {
             }
             return 0;
         },
-        .update => {
-            const old_newest: []const u8 = try allocator.dupe(u8, (try Registry.getNewestToolchainVersion(
-                init.io,
-                allocator,
-                init.arena.allocator(),
-                toolchain_path,
-            )));
-            defer allocator.free(old_newest);
-            try Registry.delete(init.io, allocator, toolchain_path);
-            const new_newest = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
-            if (std.mem.eql(u8, old_newest, new_newest)) {
-                std.log.info("No new Flint version available, newest version is still {s}", .{old_newest});
-            } else {
-                try stdout.print("New Flint version found: '{s}'. Do you want to execute 'flint upgrade' now? [y/N] ", .{new_newest});
-                var out_buffer: [16]u8 = @splat(0);
-                var out: std.Io.Writer = .fixed(&out_buffer);
-                out_buffer[try stdin.streamDelimiter(&out, '\n')] = '\n';
-                switch (out_buffer[0]) {
-                    'y', 'Y' => {},
-                    'n', 'N', '\n' => return 0,
-                    else => {
-                        std.log.err("Expected one of 'y', 'Y', 'n' or 'N' but got '{c}'", .{out_buffer[0]});
-                        return 1;
-                    },
-                }
-                version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
-                continue :sw .upgrade;
-            }
-            return 0;
-        },
-        .upgrade => {
-            if (continuation) |prev| switch (prev) {
-                .install => {
-                    // Now that the newest version is installed, we can remove the currently active version
-                    if (active) |curr| {
-                        if (std.mem.eql(u8, curr, version)) {
-                            // We try to switch to the already active version, removing that would be a bug, so we just switch
-                            continuation = null;
-                            continue :sw .@"switch";
-                        }
-                        version = curr;
-                        continuation = .upgrade;
-                        continue :sw .remove;
-                    } else {
-                        continuation = null;
-                        continue :sw .@"switch";
-                    }
-                },
-                .remove => {
-                    // Now that we have removed the previous version we can switch to the newest version it
-                    version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
-                    continuation = null;
-                    continue :sw .@"switch";
-                },
-                else => @panic("Unrecognized continuation sequence"),
-            } else {
-                // First install newest version
-                continuation = .upgrade;
-                active =
-                    if ((try State.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain_active) |a|
-                        try allocator.dupe(u8, a)
-                    else
-                        null;
-                try Registry.delete(init.io, allocator, toolchain_path);
-                version = try Registry.getNewestToolchainVersion(init.io, allocator, init.arena.allocator(), toolchain_path);
-                continue :sw .install;
-            }
-        },
-        .remove => {
-            try State.removeToolchainInstalled(init.io, allocator, init.arena.allocator(), toolchain_path, version);
-            if (continuation) |next| {
-                continuation = .remove;
-                continue :sw next;
-            }
-            return 0;
-        },
-        .@"switch" => {
-            try State.setActiveToolchain(init.io, allocator, init.arena.allocator(), toolchain_path, version);
-            return 0;
-        },
         .init => return init_cmd.main(init.io, allocator, iter),
         .fetch => return fetch_cmd.main(init.io, allocator, iter),
         .build => return build_cmd.main(init.io, allocator, iter),
@@ -432,12 +432,12 @@ fn printHelp(writer: *std.Io.Writer) !void {
         \\    list
         \\
         \\  list                List all available and installed versions of Flint
-        \\  install [<version>] Install a specific version of Flint (just installs the newest Flint version if
-        \\                      no version is provided)
         \\  update              Check for updates of Flint (force-fetches the 'registry.zon' file)
         \\  upgrade             Installs the newest Flint version and uninstalls the version currently in use
         \\  remove <version>    Remove a specific version of Flint
         \\  switch <version>    Use specific version of Flint
+        \\  install [<version>] Install a specific version of Flint (just installs the newest Flint version if
+        \\                      no version is provided)
         \\
         \\  init                Initialize a new empty Flint project in the current working directory
         \\  fetch               Fetch all external dependencies described in the 'flint.toml' file
