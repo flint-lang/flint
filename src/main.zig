@@ -345,6 +345,11 @@ pub fn main(init: std.process.Init) !u8 {
                 .install => {
                     // Now that the newest version is installed, we can remove the currently active version
                     if (active) |curr| {
+                        if (std.mem.eql(u8, curr, version)) {
+                            // We try to switch to the already active version, removing that would be a bug, so we just switch
+                            continuation = null;
+                            continue :sw .@"switch";
+                        }
                         version = curr;
                         continuation = .upgrade;
                         continue :sw .remove;
