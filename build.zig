@@ -1,6 +1,9 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+    const git_exe_path: []const u8 = b.findProgram(.{ .names = &.{"git"} }) orelse
+        @panic("'git' not found on this system");
+
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
@@ -9,9 +12,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    b.graph.poisonCache();
     const commit_hash: []const u8 = std.mem.trim(
         u8,
-        b.run(&[_][]const u8{ "git", "rev-parse", "--short", "HEAD" }),
+        b.run(&[_][]const u8{ git_exe_path, "rev-parse", "--short", "HEAD" }),
         &std.ascii.whitespace,
     );
     std.debug.print("-- Commit Hash is {s}\n", .{commit_hash});
