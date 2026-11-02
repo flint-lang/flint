@@ -316,80 +316,13 @@ pub fn main(init: std.process.Init) !u8 {
                     },
                 }
             }
+
             const release = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain.get(version).?;
-            var iter_artifacts = release.artifacts.iterator();
-            const artifact: ?Registry.ToolchainRelease.PlatformArtifacts = blk: while (iter_artifacts.next()) |artifact| {
-                var split_iterator = std.mem.splitScalar(u8, artifact.key_ptr.*, '-');
-                const arch = blk2: {
-                    const arch_str = split_iterator.next() orelse {
-                        std.log.err("Artifact string does not start with architecture: {s}", .{artifact.key_ptr.*});
-                        return 1;
-                    };
-                    break :blk2 std.meta.stringToEnum(std.Target.Cpu.Arch, arch_str) orelse {
-                        std.log.err("Invalid architecture detected in registry: {s}", .{arch_str});
-                        return 1;
-                    };
-                };
-                const platform = blk2: {
-                    const platform_str = split_iterator.next() orelse {
-                        std.log.err("Artifact string does not end with platform: {s}", .{artifact.key_ptr.*});
-                        return 1;
-                    };
-                    break :blk2 std.meta.stringToEnum(std.Target.Os.Tag, platform_str) orelse {
-                        std.log.err("Invalid platform detected in registry: {s}", .{platform_str});
-                        return 1;
-                    };
-                };
-                std.debug.assert(split_iterator.next() == null);
-                if (builtin.cpu.arch != arch) {
-                    continue;
-                }
-                if (builtin.os.tag != platform) {
-                    continue;
-                }
-                break :blk artifact.value_ptr.*;
-            } else null;
-            if (artifact == null) {
+            if (try getPlatformArtifacts(release)) |artifacts| {
+                try installPlatformArtifacts(init.io, allocator, artifacts, toolchain_path, version);
+            } else {
                 std.log.err("Could not find suitable platform for this system: {s}-{s}", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) });
                 return 1;
-            }
-            const flintc = artifact.?.flintc;
-            const fls = artifact.?.fls;
-
-            const sep = std.Io.Dir.path.sep;
-            const toolchain_versions_path = try std.fmt.allocPrint(allocator, "{s}{c}toolchain", .{ toolchain_path, sep });
-            defer allocator.free(toolchain_versions_path);
-            try std.Io.Dir.cwd().createDirPath(init.io, toolchain_versions_path);
-
-            const toolchain_install_path = try std.fmt.allocPrint(allocator, "{s}{c}{s}", .{ toolchain_versions_path, sep, version });
-            defer allocator.free(toolchain_install_path);
-            try std.Io.Dir.cwd().createDirPath(init.io, toolchain_install_path);
-            errdefer std.Io.Dir.cwd().deleteTree(init.io, toolchain_install_path) catch @panic("Dir Deletion Failed");
-
-            const toolchain_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}bin", .{ toolchain_install_path, sep });
-            defer allocator.free(toolchain_bin_path);
-            try std.Io.Dir.cwd().createDirPath(init.io, toolchain_bin_path);
-
-            const flintc_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}flintc", .{ toolchain_bin_path, sep });
-            defer allocator.free(flintc_bin_path);
-
-            const fls_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}fls", .{ toolchain_bin_path, sep });
-            defer allocator.free(fls_bin_path);
-
-            try net.downloadFile(init.io, allocator, flintc.url, flintc_bin_path);
-            try net.checkFileIntegrity(init.io, allocator, flintc_bin_path, flintc.shasum);
-
-            try net.downloadFile(init.io, allocator, fls.url, fls_bin_path);
-            try net.checkFileIntegrity(init.io, allocator, fls_bin_path, fls.shasum);
-
-            if (builtin.os.tag != .windows) {
-                const flintc_file = try std.Io.Dir.cwd().openFile(init.io, flintc_bin_path, .{});
-                defer flintc_file.close(init.io);
-                try flintc_file.setPermissions(init.io, .executable_file);
-
-                const fls_file = try std.Io.Dir.cwd().openFile(init.io, fls_bin_path, .{});
-                defer fls_file.close(init.io);
-                try fls_file.setPermissions(init.io, .executable_file);
             }
 
             try State.addToolchainInstalled(init.io, allocator, toolchain_path, version);
@@ -446,4 +379,84 @@ fn printHelp(writer: *std.Io.Writer) !void {
         \\
     );
     try writer.flush();
+}
+
+fn getPlatformArtifacts(release: Registry.ToolchainRelease) !?Registry.ToolchainRelease.PlatformArtifacts {
+    var iter_artifacts = release.artifacts.iterator();
+    while (iter_artifacts.next()) |artifact| {
+        var split_iterator = std.mem.splitScalar(u8, artifact.key_ptr.*, '-');
+        const arch = blk2: {
+            const arch_str = split_iterator.next() orelse {
+                std.log.err("Artifact string does not start with architecture: {s}", .{artifact.key_ptr.*});
+                return null;
+            };
+            break :blk2 std.meta.stringToEnum(std.Target.Cpu.Arch, arch_str) orelse {
+                std.log.err("Invalid architecture detected in registry: {s}", .{arch_str});
+                return null;
+            };
+        };
+        const platform = blk2: {
+            const platform_str = split_iterator.next() orelse {
+                std.log.err("Artifact string does not end with platform: {s}", .{artifact.key_ptr.*});
+                return null;
+            };
+            break :blk2 std.meta.stringToEnum(std.Target.Os.Tag, platform_str) orelse {
+                std.log.err("Invalid platform detected in registry: {s}", .{platform_str});
+                return null;
+            };
+        };
+        std.debug.assert(split_iterator.next() == null);
+        if (builtin.cpu.arch != arch) {
+            continue;
+        }
+        if (builtin.os.tag != platform) {
+            continue;
+        }
+        return artifact.value_ptr.*;
+    }
+    return null;
+}
+
+fn installPlatformArtifacts(
+    io: std.Io,
+    allocator: std.mem.Allocator,
+    artifacts: Registry.ToolchainRelease.PlatformArtifacts,
+    toolchain_path: []const u8,
+    version: []const u8,
+) !void {
+    const sep = std.Io.Dir.path.sep;
+    const toolchain_versions_path = try std.fmt.allocPrint(allocator, "{s}{c}toolchain", .{ toolchain_path, sep });
+    defer allocator.free(toolchain_versions_path);
+    try std.Io.Dir.cwd().createDirPath(io, toolchain_versions_path);
+
+    const toolchain_install_path = try std.fmt.allocPrint(allocator, "{s}{c}{s}", .{ toolchain_versions_path, sep, version });
+    defer allocator.free(toolchain_install_path);
+    try std.Io.Dir.cwd().createDirPath(io, toolchain_install_path);
+    errdefer std.Io.Dir.cwd().deleteTree(io, toolchain_install_path) catch @panic("Dir Deletion Failed");
+
+    const toolchain_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}bin", .{ toolchain_install_path, sep });
+    defer allocator.free(toolchain_bin_path);
+    try std.Io.Dir.cwd().createDirPath(io, toolchain_bin_path);
+
+    const flintc_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}flintc", .{ toolchain_bin_path, sep });
+    defer allocator.free(flintc_bin_path);
+
+    const fls_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}fls", .{ toolchain_bin_path, sep });
+    defer allocator.free(fls_bin_path);
+
+    try net.downloadFile(io, allocator, artifacts.flintc.url, flintc_bin_path);
+    try net.checkFileIntegrity(io, allocator, flintc_bin_path, artifacts.flintc.shasum);
+
+    try net.downloadFile(io, allocator, artifacts.fls.url, fls_bin_path);
+    try net.checkFileIntegrity(io, allocator, fls_bin_path, artifacts.fls.shasum);
+
+    if (builtin.os.tag != .windows) {
+        const flintc_file = try std.Io.Dir.cwd().openFile(io, flintc_bin_path, .{});
+        defer flintc_file.close(io);
+        try flintc_file.setPermissions(io, .executable_file);
+
+        const fls_file = try std.Io.Dir.cwd().openFile(io, fls_bin_path, .{});
+        defer fls_file.close(io);
+        try fls_file.setPermissions(io, .executable_file);
+    }
 }
