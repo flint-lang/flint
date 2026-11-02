@@ -317,7 +317,6 @@ pub fn deinit(allocator: std.mem.Allocator) void {
 
 pub fn delete(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
     deinit(allocator);
-    registry = null;
 
     const registry_path = try std.fmt.allocPrint(allocator, "{s}{c}registry.zon", .{ toolchain_path, std.Io.Dir.path.sep });
     defer allocator.free(registry_path);

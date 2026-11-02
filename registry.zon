@@ -3,7 +3,7 @@
         .@"v0.4.2-core" = .{
             .fip_version = "v0.4.1",
             .bundles = .{
-                .{ .id = "v0.4.2-core-r0", .shasum = "TODO" },
+                .{ .id = "v0.4.2-core-r0", .shasum = "83c8e34e658350d002a0d46fa73a647da9231b2b9dbeac2b4051733123399f85" },
             },
             .artifacts = .{
                 .@"x86_64-linux" = .{
