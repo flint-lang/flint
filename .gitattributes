@@ -1,1 +1,3 @@
 *.zon linguist-language=Zig
+*.ft linguist-language=TypeScript
+* text=auto eol=lf
