@@ -327,6 +327,7 @@ pub fn main(init: std.process.Init) !u8 {
             }
             if (release.bundles.len > 0) {
                 try installBundle(init.io, allocator, release.bundles[0], toolchain_path);
+                try State.addBundleInstalled(init.io, allocator, toolchain_path, release.bundles[0].id);
             }
 
             try State.addToolchainInstalled(init.io, allocator, toolchain_path, version);
