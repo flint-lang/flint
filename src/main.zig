@@ -4,6 +4,7 @@ const clap = @import("clap");
 
 const defines = @import("defines");
 
+const extract = @import("extract.zig");
 const net = @import("net.zig");
 const fip_cmd = @import("fip_cmd.zig");
 const target_cmd = @import("target_cmd.zig");
@@ -324,6 +325,9 @@ pub fn main(init: std.process.Init) !u8 {
                 std.log.err("Could not find suitable platform for this system: {s}-{s}", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) });
                 return 1;
             }
+            if (release.bundles.len > 0) {
+                try installBundle(init.io, allocator, release.bundles[0], toolchain_path);
+            }
 
             try State.addToolchainInstalled(init.io, allocator, toolchain_path, version);
 
@@ -459,4 +463,28 @@ fn installPlatformArtifacts(
         defer fls_file.close(io);
         try fls_file.setPermissions(io, .executable_file);
     }
+}
+
+fn installBundle(io: std.Io, allocator: std.mem.Allocator, bundle: Registry.Bundle, toolchain_path: []const u8) !void {
+    const sep = std.Io.Dir.path.sep;
+
+    const bundles_dir = try std.fmt.allocPrint(allocator, "{s}{c}bundles", .{ toolchain_path, sep });
+    defer allocator.free(bundles_dir);
+    try std.Io.Dir.cwd().createDirPath(io, bundles_dir);
+
+    const bundle_dir = try std.fmt.allocPrint(allocator, "{s}{c}{s}", .{ bundles_dir, sep, bundle.id });
+    defer allocator.free(bundle_dir);
+    try std.Io.Dir.cwd().deleteTree(io, bundle_dir);
+    try std.Io.Dir.cwd().createDirPath(io, bundle_dir);
+
+    const bundle_file = try std.fmt.allocPrint(allocator, "{s}.tar.gz", .{bundle_dir});
+    defer allocator.free(bundle_file);
+
+    const bundle_url = try std.fmt.allocPrint(allocator, "https://github.com/flint-lang/flint/releases/download/bundles/{s}.tar.gz", .{bundle.id});
+    defer allocator.free(bundle_url);
+
+    try net.downloadFile(io, allocator, bundle_url, bundle_file);
+    try net.checkFileIntegrity(io, allocator, bundle_file, bundle.shasum);
+
+    try extract.tarGz(io, bundle_file, bundle_dir, 1);
 }
