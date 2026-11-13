@@ -93,7 +93,7 @@ pub fn main(init: std.process.Init) !u8 {
     const toolchain_path = try getToolchainPath(init.io, allocator, init.environ_map);
     defer allocator.free(toolchain_path);
 
-    defer Registry.deinit(allocator);
+    defer Registry.deinit();
     defer State.deinit(allocator);
 
     var iter = try init.minimal.args.iterateAllocator(allocator);
@@ -150,9 +150,8 @@ pub fn main(init: std.process.Init) !u8 {
                 // they are installed at all is enough
                 break :blk _version;
             }
-            var iter_toolchain = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain.iterator();
-            const version_found: bool = blk2: while (iter_toolchain.next()) |toolchain| {
-                if (std.mem.eql(u8, toolchain.key_ptr.*, _version)) {
+            const version_found: bool = blk2: for ((try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain) |toolchain| {
+                if (std.mem.eql(u8, toolchain.version, _version)) {
                     break :blk2 true;
                 }
             } else false;
@@ -179,29 +178,26 @@ pub fn main(init: std.process.Init) !u8 {
         .fip => return fip_cmd.main(init.io, allocator, iter),
         .target => return target_cmd.main(init.io, allocator, iter),
         .list => {
-            var iter_toolchain = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain.iterator();
+            const toolchains = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain;
             try stdout.writeAll("Available Flint versions:\n");
-            var current = iter_toolchain.next();
-            while (current) |toolchain| {
-                const next = iter_toolchain.next();
-                if (next != null) {
-                    try stdout.print(" ├─ {s}", .{toolchain.key_ptr.*});
+            for (toolchains, 1..) |toolchain, next| {
+                if (next < toolchains.len) {
+                    try stdout.print(" ├─ {s}", .{toolchain.version});
                 } else {
-                    try stdout.print(" └─ {s}", .{toolchain.key_ptr.*});
+                    try stdout.print(" └─ {s}", .{toolchain.version});
                 }
                 for ((try State.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain_installed) |installed| {
-                    if (std.mem.eql(u8, installed, toolchain.key_ptr.*)) {
+                    if (std.mem.eql(u8, installed, toolchain.version)) {
                         try stdout.writeAll(" [installed]");
                         break;
                     }
                 }
                 if ((try State.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain_active) |a| {
-                    if (std.mem.eql(u8, a, toolchain.key_ptr.*)) {
+                    if (std.mem.eql(u8, a, toolchain.version)) {
                         try stdout.writeAll(" [active]");
                     }
                 }
                 try stdout.writeByte('\n');
-                current = next;
             }
             try stdout.flush();
             return 0;
@@ -318,16 +314,16 @@ pub fn main(init: std.process.Init) !u8 {
                 }
             }
 
-            const release = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain.get(version).?;
-            if (try getPlatformArtifacts(release)) |artifacts| {
+            const toolchain = try Registry.getToolchainFromVersion(version);
+            if (try getPlatformArtifacts(toolchain)) |artifacts| {
                 try installPlatformArtifacts(init.io, allocator, artifacts, toolchain_path, version);
             } else {
                 std.log.err("Could not find suitable platform for this system: {s}-{s}", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) });
                 return 1;
             }
-            if (release.bundles.len > 0) {
-                try installBundle(init.io, allocator, release.bundles[0], toolchain_path);
-                try State.addBundleInstalled(init.io, allocator, toolchain_path, release.bundles[0].id);
+            if (toolchain.bundles.len > 0) {
+                try installBundle(init.io, allocator, &toolchain.bundles[0], toolchain_path);
+                try State.addBundleInstalled(init.io, allocator, toolchain_path, toolchain.bundles[0].id);
             }
 
             try State.addToolchainInstalled(init.io, allocator, toolchain_path, version);
@@ -386,13 +382,12 @@ fn printHelp(writer: *std.Io.Writer) !void {
     try writer.flush();
 }
 
-fn getPlatformArtifacts(release: Registry.ToolchainRelease) !?Registry.ToolchainRelease.PlatformArtifacts {
-    var iter_artifacts = release.artifacts.iterator();
-    while (iter_artifacts.next()) |artifact| {
-        var split_iterator = std.mem.splitScalar(u8, artifact.key_ptr.*, '-');
+fn getPlatformArtifacts(toolchain: *const Registry.Toolchain) !?Registry.Toolchain.Platform {
+    for (toolchain.platforms) |platform| {
+        var split_iterator = std.mem.splitScalar(u8, platform.platform, '-');
         const arch = blk2: {
             const arch_str = split_iterator.next() orelse {
-                std.log.err("Artifact string does not start with architecture: {s}", .{artifact.key_ptr.*});
+                std.log.err("Platform string does not start with architecture: {s}", .{platform.platform});
                 return null;
             };
             break :blk2 std.meta.stringToEnum(std.Target.Cpu.Arch, arch_str) orelse {
@@ -400,9 +395,9 @@ fn getPlatformArtifacts(release: Registry.ToolchainRelease) !?Registry.Toolchain
                 return null;
             };
         };
-        const platform = blk2: {
+        const os = blk2: {
             const platform_str = split_iterator.next() orelse {
-                std.log.err("Artifact string does not end with platform: {s}", .{artifact.key_ptr.*});
+                std.log.err("Artifact string does not end with platform: {s}", .{platform.platform});
                 return null;
             };
             break :blk2 std.meta.stringToEnum(std.Target.Os.Tag, platform_str) orelse {
@@ -414,10 +409,10 @@ fn getPlatformArtifacts(release: Registry.ToolchainRelease) !?Registry.Toolchain
         if (builtin.cpu.arch != arch) {
             continue;
         }
-        if (builtin.os.tag != platform) {
+        if (builtin.os.tag != os) {
             continue;
         }
-        return artifact.value_ptr.*;
+        return platform;
     }
     return null;
 }
@@ -425,7 +420,7 @@ fn getPlatformArtifacts(release: Registry.ToolchainRelease) !?Registry.Toolchain
 fn installPlatformArtifacts(
     io: std.Io,
     allocator: std.mem.Allocator,
-    artifacts: Registry.ToolchainRelease.PlatformArtifacts,
+    artifacts: Registry.Toolchain.Platform,
     toolchain_path: []const u8,
     version: []const u8,
 ) !void {
@@ -466,7 +461,7 @@ fn installPlatformArtifacts(
     }
 }
 
-fn installBundle(io: std.Io, allocator: std.mem.Allocator, bundle: Registry.Bundle, toolchain_path: []const u8) !void {
+fn installBundle(io: std.Io, allocator: std.mem.Allocator, bundle: *const Registry.Toolchain.Bundle, toolchain_path: []const u8) !void {
     const sep = std.Io.Dir.path.sep;
 
     const bundles_dir = try std.fmt.allocPrint(allocator, "{s}{c}bundles", .{ toolchain_path, sep });

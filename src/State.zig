@@ -336,17 +336,23 @@ pub fn removeToolchainInstalled(
 
     // Remove all bundles installed from this toolchain, if present
     if (state.?.bundle_active != null or state.?.bundle_installed.len > 0) {
-        for ((try Registry.get(io, allocator, arena, toolchain_path)).toolchain.get(version).?.bundles) |bundle| {
-            const bundle_dir = try std.fmt.allocPrint(allocator, "{0s}{1c}bundles{1c}{2s}", .{ toolchain_path, sep, bundle.id });
-            defer allocator.free(bundle_dir);
-            try std.Io.Dir.cwd().deleteTree(io, bundle_dir);
+        for ((try Registry.get(io, allocator, arena, toolchain_path)).toolchain) |toolchain| {
+            if (!std.mem.eql(u8, toolchain.version, version)) {
+                continue;
+            }
+            for (toolchain.bundles) |bundle| {
+                const bundle_dir = try std.fmt.allocPrint(allocator, "{0s}{1c}bundles{1c}{2s}", .{ toolchain_path, sep, bundle.id });
+                defer allocator.free(bundle_dir);
+                try std.Io.Dir.cwd().deleteTree(io, bundle_dir);
 
-            const bundle_file = try std.fmt.allocPrint(allocator, "{0s}{1c}bundles{1c}{2s}.tar.gz", .{ toolchain_path, sep, bundle.id });
-            defer allocator.free(bundle_file);
-            std.Io.Dir.cwd().deleteFile(io, bundle_file) catch |err| switch (err) {
-                error.FileNotFound => {},
-                else => return err,
-            };
+                const bundle_file = try std.fmt.allocPrint(allocator, "{0s}{1c}bundles{1c}{2s}.tar.gz", .{ toolchain_path, sep, bundle.id });
+                defer allocator.free(bundle_file);
+                std.Io.Dir.cwd().deleteFile(io, bundle_file) catch |err| switch (err) {
+                    error.FileNotFound => {},
+                    else => return err,
+                };
+            }
+            break;
         }
     }
 

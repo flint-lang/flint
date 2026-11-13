@@ -8,175 +8,46 @@ const Self = @This();
 var registry: ?Self = null;
 var newest_toolchain_release: ?[]const u8 = null;
 
-toolchain: std.StringArrayHashMapUnmanaged(ToolchainRelease),
-fip: std.StringArrayHashMapUnmanaged(FipRelease),
+toolchain: []Toolchain,
+fip: []Fip,
 
-pub const Artifact = struct {
-    url: []const u8,
-    shasum: []const u8,
-};
-
-pub const Bundle = struct {
-    id: []const u8,
-    shasum: []const u8,
-};
-
-pub const ToolchainRelease = struct {
+pub const Toolchain = struct {
+    version: []const u8,
     fip_version: []const u8,
     bundles: []const Bundle,
-    artifacts: std.StringArrayHashMapUnmanaged(PlatformArtifacts),
+    platforms: []Platform,
 
-    pub const PlatformArtifacts = struct {
-        flintc: Artifact,
-        fls: Artifact,
+    pub const Bundle = struct {
+        id: []const u8,
+        shasum: []const u8,
     };
 
-    pub fn parse(
-        allocator: std.mem.Allocator,
-        arena: std.mem.Allocator,
-        zoir: *std.zig.Zoir,
-        ast: *std.zig.Ast,
-        diagnostics: *std.zon.parse.Diagnostics,
-        names: []const std.zig.Zoir.NullTerminatedString,
-        vals: std.zig.Zoir.Node.Index.Range,
-    ) !ToolchainRelease {
-        var release: ToolchainRelease = .{
-            .fip_version = undefined,
-            .bundles = undefined,
-            .artifacts = .empty,
+    pub const Platform = struct {
+        platform: []const u8,
+        flintc: Artifact,
+        fls: Artifact,
+
+        pub const Artifact = struct {
+            url: []const u8,
+            shasum: []const u8,
         };
-        var fip_version_parsed: bool = false;
-        var bundles_parsed: bool = false;
-        var artifacts_parsed: bool = false;
-        errdefer release.deinit(allocator, fip_version_parsed);
-
-        for (names, 0..vals.len) |field_name, i| {
-            if (std.mem.eql(u8, field_name.get(zoir), "fip_version")) {
-                if (fip_version_parsed) {
-                    return error.DuplicateField;
-                }
-                release.fip_version = switch (vals.at(@intCast(i)).get(zoir)) {
-                    .string_literal => |fip_version| try allocator.dupe(u8, fip_version),
-                    else => {
-                        return error.ExpectedStringLiteral;
-                    },
-                };
-                fip_version_parsed = true;
-            } else if (std.mem.eql(u8, field_name.get(zoir), "bundles")) {
-                if (bundles_parsed) {
-                    return error.DuplicateField;
-                }
-                release.bundles = try std.zon.parse.fromZoir([]const Bundle, .{
-                    .arena = arena,
-                    .ast = ast,
-                    .zoir = zoir,
-                    .node = vals.at(@intCast(i)),
-                    .diagnostics = diagnostics,
-                });
-                bundles_parsed = true;
-            } else if (std.mem.eql(u8, field_name.get(zoir), "artifacts")) {
-                if (artifacts_parsed) {
-                    return error.DuplicateField;
-                }
-                const artifacts_struct = switch (vals.at(@intCast(i)).get(zoir)) {
-                    .struct_literal => |artifact| artifact,
-                    else => {
-                        return error.ExpectedStructLiteral;
-                    },
-                };
-                for (artifacts_struct.names, 0..artifacts_struct.vals.len) |platform_node, j| {
-                    const artifact = try std.zon.parse.fromZoir(PlatformArtifacts, .{
-                        .arena = arena,
-                        .ast = ast,
-                        .zoir = zoir,
-                        .node = artifacts_struct.vals.at(@intCast(j)),
-                        .diagnostics = diagnostics,
-                    });
-                    try release.artifacts.put(allocator, try allocator.dupe(u8, platform_node.get(zoir)), artifact);
-                }
-                artifacts_parsed = true;
-            }
-        }
-        if (!fip_version_parsed) {
-            return error.MissingField;
-        }
-        if (!bundles_parsed) {
-            return error.MissingField;
-        }
-        if (!artifacts_parsed) {
-            return error.MissingField;
-        }
-        return release;
-    }
-
-    pub fn deinit(self: *ToolchainRelease, allocator: std.mem.Allocator, fip_version_parsed: bool) void {
-        if (fip_version_parsed) {
-            allocator.free(self.fip_version);
-        }
-        var iter = self.artifacts.iterator();
-        while (iter.next()) |*artifacts| {
-            allocator.free(artifacts.key_ptr.*);
-        }
-        self.artifacts.deinit(allocator);
-    }
+    };
 };
 
-pub const FipRelease = struct {
-    c: std.StringArrayHashMapUnmanaged(Artifact),
+pub const Fip = struct {
+    version: []const u8,
+    modules: []Module,
 
-    pub fn parse(
-        allocator: std.mem.Allocator,
-        arena: std.mem.Allocator,
-        zoir: *std.zig.Zoir,
-        ast: *std.zig.Ast,
-        diagnostics: *std.zon.parse.Diagnostics,
-        names: []const std.zig.Zoir.NullTerminatedString,
-        vals: std.zig.Zoir.Node.Index.Range,
-    ) !FipRelease {
-        var release: FipRelease = .{
-            .c = .empty,
+    pub const Module = struct {
+        language: []const u8,
+        platforms: []Platform,
+
+        pub const Platform = struct {
+            platform: []const u8,
+            url: []const u8,
+            shasum: []const u8,
         };
-        errdefer release.deinit(allocator);
-
-        var c_parsed: bool = false;
-
-        for (names, 0..vals.len) |language_node, i| {
-            const language = language_node.get(zoir);
-            const language_struct = switch (vals.at(@intCast(i)).get(zoir)) {
-                .struct_literal => |s| s,
-                else => return error.ExpectedStruct,
-            };
-
-            if (std.mem.eql(u8, language, "c")) {
-                if (c_parsed) {
-                    return error.DuplicateField;
-                }
-                for (language_struct.names, 0..language_struct.vals.len) |platform_node, j| {
-                    const artifact = try std.zon.parse.fromZoir(Artifact, .{
-                        .arena = arena,
-                        .ast = ast,
-                        .zoir = zoir,
-                        .node = language_struct.vals.at(@intCast(j)),
-                        .diagnostics = diagnostics,
-                    });
-                    try release.c.put(allocator, try allocator.dupe(u8, platform_node.get(zoir)), artifact);
-                }
-                c_parsed = true;
-            }
-        }
-        if (!c_parsed) {
-            return error.MissingField;
-        }
-        return release;
-    }
-
-    pub fn deinit(self: *FipRelease, allocator: std.mem.Allocator) void {
-        var iter = self.c.iterator();
-        while (iter.next()) |*artifact| {
-            allocator.free(artifact.key_ptr.*);
-        }
-        self.c.deinit(allocator);
-    }
+    };
 };
 
 pub fn getNewestToolchainVersion(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, toolchain_path: []const u8) ![]const u8 {
@@ -195,93 +66,13 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, t
     var diag_zon: std.zon.parse.Diagnostics = undefined;
     errdefer diag_zon.log("registry.zon");
 
-    var ast = try std.zig.Ast.parse(allocator, registry_content, .{ .mode = .zon });
-    defer ast.deinit(allocator);
-
-    var zoir = try std.zig.ZonGen.generate(allocator, ast, .{ .parse_str_lits = true });
-    defer zoir.deinit(allocator);
-
-    const root = std.zig.Zoir.Node.Index.root.get(&zoir);
-    const root_struct = switch (root) {
-        .struct_literal => |s| s,
-        else => return error.ExpectedStruct,
-    };
-
-    registry = .{
-        .toolchain = .empty,
-        .fip = .empty,
-    };
-
-    var toolchain_parsed: bool = false;
-    var fip_parsed: bool = false;
-
-    for (root_struct.names, 0..root_struct.vals.len) |name_node, f| {
-        const name = name_node.get(&zoir);
-        const value_node = root_struct.vals.at(@intCast(f));
-
-        if (std.mem.eql(u8, name, "toolchain")) {
-            if (toolchain_parsed) {
-                return error.DuplicateField;
-            }
-            const toolchain_struct = switch (value_node.get(&zoir)) {
-                .struct_literal => |s| s,
-                else => return error.ExpectedStruct,
-            };
-            for (toolchain_struct.names, 0..toolchain_struct.vals.len) |version, j| {
-                const release_struct = switch (toolchain_struct.vals.at(@intCast(j)).get(&zoir)) {
-                    .struct_literal => |s| s,
-                    else => return error.ExpectedStruct,
-                };
-                const release = try ToolchainRelease.parse(
-                    allocator,
-                    arena,
-                    &zoir,
-                    &ast,
-                    &diag_zon,
-                    release_struct.names,
-                    release_struct.vals,
-                );
-                try registry.?.toolchain.put(allocator, try allocator.dupe(u8, version.get(&zoir)), release);
-                if (newest_toolchain_release == null) {
-                    // The first release to be parsed is always the newest release
-                    newest_toolchain_release = try allocator.dupe(u8, version.get(&zoir));
-                }
-            }
-            toolchain_parsed = true;
-        } else if (std.mem.eql(u8, name, "fip")) {
-            if (fip_parsed) {
-                return error.DuplicateField;
-            }
-            const fip_struct = switch (value_node.get(&zoir)) {
-                .struct_literal => |s| s,
-                else => return error.ExpectedStruct,
-            };
-            for (fip_struct.names, 0..fip_struct.vals.len) |version, j| {
-                const release_struct = switch (fip_struct.vals.at(@intCast(j)).get(&zoir)) {
-                    .struct_literal => |s| s,
-                    else => return error.ExpectedStruct,
-                };
-                const release = try FipRelease.parse(
-                    allocator,
-                    arena,
-                    &zoir,
-                    &ast,
-                    &diag_zon,
-                    release_struct.names,
-                    release_struct.vals,
-                );
-                try registry.?.fip.put(allocator, try allocator.dupe(u8, version.get(&zoir)), release);
-            }
-            fip_parsed = true;
-        }
-    }
-
-    if (!toolchain_parsed) {
-        return error.MissingField;
-    }
-    if (!fip_parsed) {
-        return error.MissingField;
-    }
+    registry = try std.zon.parse.fromSlice(Self, .{
+        .gpa = allocator,
+        .arena = arena,
+        .source = registry_content,
+        .diagnostics = &diag_zon,
+    });
+    newest_toolchain_release = registry.?.toolchain[0].version;
 
     var stdout_writer = std.Io.File.stdout().writer(io, &.{});
     const stdout = &stdout_writer.interface;
@@ -290,33 +81,13 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, t
     return registry.?;
 }
 
-pub fn deinit(allocator: std.mem.Allocator) void {
-    if (registry == null) {
-        return;
-    }
-    // free nested maps + strings as needed
-    var iter1 = registry.?.toolchain.iterator();
-    while (iter1.next()) |release| {
-        allocator.free(release.key_ptr.*);
-        release.value_ptr.deinit(allocator, true);
-    }
-    registry.?.toolchain.deinit(allocator);
-
-    var iter2 = registry.?.fip.iterator();
-    while (iter2.next()) |release| {
-        allocator.free(release.key_ptr.*);
-        release.value_ptr.deinit(allocator);
-    }
-    registry.?.fip.deinit(allocator);
+pub fn deinit() void {
     registry = null;
-    if (newest_toolchain_release) |release| {
-        allocator.free(release);
-    }
     newest_toolchain_release = null;
 }
 
 pub fn delete(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
-    deinit(allocator);
+    deinit();
 
     const registry_path = try std.fmt.allocPrint(allocator, "{s}{c}registry.zon", .{ toolchain_path, std.Io.Dir.path.sep });
     defer allocator.free(registry_path);
@@ -338,27 +109,23 @@ pub fn dump(writer: *std.Io.Writer) !void {
         \\    .toolchain = .{
         \\
     );
-    var iter_toolchain = registry.?.toolchain.iterator();
-    while (iter_toolchain.next()) |release| {
-        const toolchain_release = release.value_ptr.*;
+    for (registry.?.toolchain) |toolchain| {
         try writer.print(
-            \\        .@"{s}" = .{{
+            \\        .{{
+            \\            .version = "{s}",
             \\            .fip_version = "{s}",
-            \\
-        , .{
-            release.key_ptr.*,
-            toolchain_release.fip_version,
-        });
-        try writer.writeAll(
             \\            .bundles = .{
-        );
-        if (toolchain_release.bundles.len == 0) {
+        , .{
+            toolchain.version,
+            toolchain.fip_version,
+        });
+        if (toolchain.bundles.len == 0) {
             try writer.writeAll(
                 \\},
                 \\
             );
         } else {
-            for (toolchain_release.bundles) |bundle| {
+            for (toolchain.bundles) |bundle| {
                 try writer.print(
                     \\                .{ .id = "{s}", .shasum = "{s}" },
                     \\
@@ -366,15 +133,13 @@ pub fn dump(writer: *std.Io.Writer) !void {
             }
         }
         try writer.writeAll(
-            \\            .artifacts = .{{
+            \\            .platforms = .{{
             \\
         );
-        var iter_artifacts = toolchain_release.artifacts.iterator();
-        while (iter_artifacts.next()) |artifact| {
-            const flintc = artifact.value_ptr.flintc;
-            const fls = artifact.value_ptr.fls;
+        for (toolchain.platforms) |platform| {
             try writer.print(
-                \\                .@"{s}" = .{{
+                \\                .{{
+                \\                    .platform = "{s}",
                 \\                    .flintc = .{{
                 \\                        .url = "{s}",
                 \\                        .shasum = "{s}",
@@ -386,11 +151,11 @@ pub fn dump(writer: *std.Io.Writer) !void {
                 \\                }},
                 \\
             , .{
-                artifact.key_ptr.*,
-                flintc.url,
-                flintc.shasum,
-                fls.url,
-                fls.shasum,
+                platform.platform,
+                platform.flintc.url,
+                platform.flintc.shasum,
+                platform.fls.url,
+                platform.fls.shasum,
             });
         }
         try writer.writeAll(
@@ -404,28 +169,45 @@ pub fn dump(writer: *std.Io.Writer) !void {
         \\    .fip = .{
         \\
     );
-    var iter_fip = registry.?.fip.iterator();
-    while (iter_fip.next()) |release| {
+    for (registry.?.fip) |fip| {
         try writer.print(
-            \\        .@"{s}" = .{{
-            \\            .c = .{{
+            \\        .{{
+            \\            .version = "{s}",
+            \\            .modules = .{{
             \\
         , .{
-            release.key_ptr.*,
+            fip.version,
         });
-        var iter_c = release.value_ptr.c.iterator();
-        while (iter_c.next()) |artifact| {
+        for (fip.modules) |module| {
             try writer.print(
-                \\                .@"{s}" = .{{
-                \\                    .url = "{s}",
-                \\                    .shasum = "{s}",
+                \\                .{{
+                \\                    .language = "{s}",
+                \\                    .platforms = .{{
+            , .{
+                module.language,
+            });
+            try writer.writeAll(
                 \\                }},
                 \\
-            , .{
-                artifact.key_ptr.*,
-                artifact.value_ptr.url,
-                artifact.value_ptr.shasum,
-            });
+            );
+            for (module.platforms) |platform| {
+                try writer.print(
+                    \\                    .{{
+                    \\                        .platform = "{s}",
+                    \\                        .url = "{s}",
+                    \\                        .shasum = "{s}",
+                    \\                    },
+                    \\
+                , .{
+                    platform.platform,
+                    platform.url,
+                    platform.shasum,
+                });
+            }
+            try writer.writeAll(
+                \\                },
+                \\
+            );
         }
         try writer.writeAll(
             \\            },
@@ -439,6 +221,15 @@ pub fn dump(writer: *std.Io.Writer) !void {
         \\
     );
     try writer.flush();
+}
+
+pub fn getToolchainFromVersion(version: []const u8) !*Toolchain {
+    for (registry.?.toolchain) |*toolchain| {
+        if (std.mem.eql(u8, toolchain.version, version)) {
+            return toolchain;
+        }
+    }
+    return error.ToolchainVersionNotFound;
 }
 
 fn getRegistryFileContent(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) ![:0]const u8 {
