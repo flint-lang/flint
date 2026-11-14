@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 
 const Self = @This();
 const Registry = @import("Registry.zig");
+const Triple = @import("target_cmd.zig").Triple;
 
 var state: ?Self = null;
 
@@ -14,6 +15,7 @@ fip_active: ?[]const u8,
 fip_installed: struct {
     c: [][]const u8,
 },
+installed_targets: []Triple,
 
 pub fn get(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, toolchain_path: []const u8) !Self {
     if (state) |s| {
@@ -86,6 +88,13 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, t
         new_fip_c[i] = try allocator.dupe(u8, state.?.fip_installed.c[i]);
     }
     state.?.fip_installed.c = new_fip_c;
+
+    const new_targets = try allocator.alloc(Triple, state.?.installed_targets.len);
+    for (0..state.?.installed_targets.len) |i| {
+        new_targets[i] = state.?.installed_targets[i];
+    }
+    state.?.installed_targets = new_targets;
+
     return state.?;
 }
 
@@ -96,30 +105,25 @@ pub fn deinit(allocator: std.mem.Allocator) void {
     if (state.?.toolchain_active) |active| {
         allocator.free(active);
     }
-    if (state.?.toolchain_installed.len > 0) {
-        for (state.?.toolchain_installed) |installed| {
-            allocator.free(installed);
-        }
-        allocator.free(state.?.toolchain_installed);
+    for (state.?.toolchain_installed) |installed| {
+        allocator.free(installed);
     }
+    allocator.free(state.?.toolchain_installed);
     if (state.?.bundle_active) |active| {
         allocator.free(active);
     }
-    if (state.?.bundle_installed.len > 0) {
-        for (state.?.bundle_installed) |installed| {
-            allocator.free(installed);
-        }
-        allocator.free(state.?.bundle_installed);
+    for (state.?.bundle_installed) |installed| {
+        allocator.free(installed);
     }
+    allocator.free(state.?.bundle_installed);
     if (state.?.fip_active) |active| {
         allocator.free(active);
     }
-    if (state.?.fip_installed.c.len > 0) {
-        for (state.?.fip_installed.c) |installed| {
-            allocator.free(installed);
-        }
-        allocator.free(state.?.fip_installed.c);
+    for (state.?.fip_installed.c) |installed| {
+        allocator.free(installed);
     }
+    allocator.free(state.?.fip_installed.c);
+    allocator.free(state.?.installed_targets);
     state = null;
 }
 
@@ -160,7 +164,7 @@ pub fn dump(writer: *std.Io.Writer) !void {
             , .{installed});
         }
         try writer.writeAll(
-            \\     },
+            \\    },
             \\
         );
     }
@@ -193,7 +197,7 @@ pub fn dump(writer: *std.Io.Writer) !void {
             , .{installed});
         }
         try writer.writeAll(
-            \\     },
+            \\    },
             \\
         );
     }
@@ -234,6 +238,28 @@ pub fn dump(writer: *std.Io.Writer) !void {
 
     try writer.writeAll(
         \\    },
+        \\    .installed_targets = .{
+    );
+    if (state.?.installed_targets.len == 0) {
+        try writer.writeAll(
+            \\},
+            \\
+        );
+    } else {
+        for (state.?.installed_targets) |target| {
+            try writer.print(
+                \\
+                \\        .{{ .arch = {}, .os = {}, .abi = {} }},
+            , target);
+        }
+        try writer.writeAll(
+            \\
+            \\    },
+            \\
+        );
+    }
+
+    try writer.writeAll(
         \\}
         \\
     );
@@ -293,6 +319,22 @@ pub fn addBundleInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain_pa
     try save(io, allocator, toolchain_path);
 }
 
+pub fn addTargetInstalled(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8, triple: Triple) !void {
+    std.debug.assert(state != null);
+    for (state.?.installed_targets) |target| {
+        if (target.equals(triple)) {
+            // Already present, we dont need to add it to the list
+            break;
+        }
+    } else {
+        // Newly added, so we need to add it to the list
+        state.?.installed_targets = try allocator.realloc(state.?.installed_targets, state.?.installed_targets.len + 1);
+        state.?.installed_targets[state.?.installed_targets.len - 1] = triple;
+    }
+
+    try save(io, allocator, toolchain_path);
+}
+
 pub fn removeToolchainInstalled(
     io: std.Io,
     allocator: std.mem.Allocator,
@@ -300,7 +342,7 @@ pub fn removeToolchainInstalled(
     toolchain_path: []const u8,
     version: []const u8,
 ) !void {
-    const sep = std.Io.Dir.path.sep;
+    const sep = std.fs.path.sep;
     _ = try get(io, allocator, arena, toolchain_path);
 
     var new_list: std.ArrayList([]const u8) = .empty;
@@ -404,7 +446,7 @@ fn save(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !v
     try file_writer.flush();
 
     // Always delete the active symlink, only re-create it if a toolchain is active
-    const sep = std.Io.Dir.path.sep;
+    const sep = std.fs.path.sep;
     const active_toolchain_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}active", .{ toolchain_path, sep });
     defer allocator.free(active_toolchain_path);
     std.Io.Dir.cwd().deleteFile(io, active_toolchain_path) catch |err| switch (err) {

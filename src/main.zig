@@ -176,7 +176,7 @@ pub fn main(init: std.process.Init) !u8 {
             return 0;
         },
         .fip => return fip_cmd.main(init.io, allocator, iter),
-        .target => return target_cmd.main(init.io, allocator, iter),
+        .target => return target_cmd.main(init.io, allocator, init.arena.allocator(), toolchain_path, iter),
         .list => {
             const toolchains = (try Registry.get(init.io, allocator, init.arena.allocator(), toolchain_path)).toolchain;
             try stdout.writeAll("Available Flint versions:\n");
@@ -361,9 +361,6 @@ fn printHelp(writer: *std.Io.Writer) !void {
         \\  help                Print this help message
         \\  fip                 Manage installations of Flint Interop Modules like 'fip-c'
         \\  target              Manage target toolchains installations
-        \\    install
-        \\    remove
-        \\    list
         \\
         \\  list                List all available and installed versions of Flint
         \\  update              Check for updates of Flint (force-fetches the 'registry.zon' file)
@@ -482,5 +479,5 @@ fn installBundle(io: std.Io, allocator: std.mem.Allocator, bundle: *const Regist
     try net.downloadFile(io, allocator, bundle_url, bundle_file);
     try net.checkFileIntegrity(io, allocator, bundle_file, bundle.shasum);
 
-    try extract.tarGz(io, bundle_file, bundle_dir, 1);
+    try extract.tarGz(io, allocator, bundle_file, bundle_dir, 1);
 }

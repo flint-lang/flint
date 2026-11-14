@@ -26,7 +26,13 @@ pub fn tarXz(io: std.Io, allocator: std.mem.Allocator, tar_xz_path: []const u8, 
     std.log.info("Successfully extracted archive to {s}.", .{extract_to});
 }
 
-pub fn tarGz(io: std.Io, tar_gz_path: []const u8, extract_to: []const u8, strip_level: u32) !void {
+pub fn tarGz(
+    io: std.Io,
+    allocator: std.mem.Allocator,
+    tar_gz_path: []const u8,
+    extract_to: []const u8,
+    strip_level: u32,
+) !void {
     // Open the GZ file
     const gz_file: std.Io.File = try std.Io.Dir.cwd().openFile(io, tar_gz_path, .{});
     defer gz_file.close(io);
@@ -47,9 +53,29 @@ pub fn tarGz(io: std.Io, tar_gz_path: []const u8, extract_to: []const u8, strip_
     defer target_dir.close(io);
 
     std.log.info("Extracting archive to {s}, this may take a while...", .{extract_to});
-    try std.tar.pipeToFileSystem(io, target_dir, &decompressor.reader, .{
+    var diagnostics: std.tar.Diagnostics = .{
+        .allocator = allocator,
+    };
+    defer diagnostics.deinit();
+
+    try std.tar.extract(io, target_dir, &decompressor.reader, .{
         .strip_components = strip_level,
+        .diagnostics = &diagnostics,
     });
+
+    for (diagnostics.errors.items) |diagnostic| {
+        switch (diagnostic) {
+            .unsupported_file_type => |info| {
+                std.log.warn(
+                    "Skipping unsupported TAR entry '{s}' (type: {s})",
+                    .{ info.file_name, @tagName(info.file_type) },
+                );
+            },
+            else => {
+                std.log.err("extract.tarGz: {any}", .{diagnostic});
+            },
+        }
+    }
 
     std.log.info("Successfully extracted archive to {s}.", .{extract_to});
 }
