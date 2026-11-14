@@ -293,7 +293,9 @@ fn installTarget__x86_64_linux_musl(io: std.Io, allocator: std.mem.Allocator, to
             .shasum = "c5d410d9f82a4f24c549fe5d24f988f85b2679b452413a9f7e5f7b956f2fe7ea",
             .strip_components = 1,
             .needed_files = &.{
+                &.{ "x86_64-linux-musl", "lib", "libc.so" },
                 &.{ "x86_64-linux-musl", "lib", "libc.a" },
+                &.{ "x86_64-linux-musl", "lib", "Scrt1.o" },
                 &.{ "x86_64-linux-musl", "lib", "crt1.o" },
                 &.{ "x86_64-linux-musl", "lib", "crti.o" },
                 &.{ "x86_64-linux-musl", "lib", "crtn.o" },
