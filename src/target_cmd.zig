@@ -193,13 +193,16 @@ pub fn main(
             if (triple.equals(Triple.x86_64_windows_gnu)) {
                 try installTarget__x86_64_windows_gnu(io, gpa, toolchain_path);
             } else if (triple.equals(Triple.x86_64_windows_msvc)) {
-                installTarget__x86_64_windows_msvc();
+                try installTarget__x86_64_windows_msvc(io, gpa, toolchain_path);
             } else if (triple.equals(Triple.x86_64_linux_gnu)) {
                 installTarget__x86_64_linux_gnu();
             } else if (triple.equals(Triple.x86_64_linux_musl)) {
                 try installTarget__x86_64_linux_musl(io, gpa, toolchain_path);
             }
             try State.addTargetInstalled(io, gpa, toolchain_path, triple);
+            const triple_str = try triple.toString(gpa);
+            defer gpa.free(triple_str);
+            std.log.info("Installed target '{s}' successfully", .{triple_str});
             return 0;
         },
         .remove => {
@@ -234,7 +237,7 @@ fn printHelp(writer: *std.Io.Writer) !void {
 }
 
 fn installTarget__x86_64_windows_gnu(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
-    try installTargetFromTarGz(
+    try installTargetFromArchive(
         io,
         allocator,
         toolchain_path,
@@ -243,38 +246,91 @@ fn installTarget__x86_64_windows_gnu(io: std.Io, allocator: std.mem.Allocator, t
             .archive_filename = "x86_64-w64-mingw32-cross.tgz",
             .url = "https://github.com/musl-cc/musl.cc/releases/download/v0.0.1/x86_64-w64-mingw32-cross.tgz",
             .shasum = "6130e6b463742bdabe1ea53f7267c1cfb0f2902f50774b6c766d19776c419488",
-            .strip_components = 1,
             .needed_files = &.{
                 // MinGW startup
-                &.{ "x86_64-w64-mingw32", "lib", "crt2.o" },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "crt2.o" } },
 
                 // GCC startup / ending
-                &.{ "lib", "gcc", "x86_64-w64-mingw32", "11.2.1", "crtbegin.o" },
-                &.{ "lib", "gcc", "x86_64-w64-mingw32", "11.2.1", "crtend.o" },
+                .{ .src = &.{ "lib", "gcc", "x86_64-w64-mingw32", "11.2.1", "crtbegin.o" } },
+                .{ .src = &.{ "lib", "gcc", "x86_64-w64-mingw32", "11.2.1", "crtend.o" } },
 
                 // GCC runtime
-                &.{ "lib", "gcc", "x86_64-w64-mingw32", "11.2.1", "libgcc.a" },
-                &.{ "lib", "gcc", "x86_64-w64-mingw32", "11.2.1", "libgcc_eh.a" },
+                .{ .src = &.{ "lib", "gcc", "x86_64-w64-mingw32", "11.2.1", "libgcc.a" } },
+                .{ .src = &.{ "lib", "gcc", "x86_64-w64-mingw32", "11.2.1", "libgcc_eh.a" } },
 
                 // MinGW runtime
-                &.{ "x86_64-w64-mingw32", "lib", "libmingw32.a" },
-                &.{ "x86_64-w64-mingw32", "lib", "libmoldname.a" },
-                &.{ "x86_64-w64-mingw32", "lib", "libmingwex.a" },
-                &.{ "x86_64-w64-mingw32", "lib", "libmsvcrt.a" },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libmingw32.a" } },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libmoldname.a" } },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libmingwex.a" } },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libmsvcrt.a" } },
 
                 // Windows API imports
-                &.{ "x86_64-w64-mingw32", "lib", "libkernel32.a" },
-                &.{ "x86_64-w64-mingw32", "lib", "libadvapi32.a" },
-                &.{ "x86_64-w64-mingw32", "lib", "libshell32.a" },
-                &.{ "x86_64-w64-mingw32", "lib", "libuser32.a" },
-                &.{ "x86_64-w64-mingw32", "lib", "libmingwthrd.a" },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libkernel32.a" } },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libadvapi32.a" } },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libshell32.a" } },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libuser32.a" } },
+                .{ .src = &.{ "x86_64-w64-mingw32", "lib", "libmingwthrd.a" } },
             },
+            .type = .{ .tar_gz = .{ .strip_components = 1 } },
         },
     );
 }
 
-fn installTarget__x86_64_windows_msvc() void {
-    std.log.debug("The 'x86_64-windows-msvc' target is not yet implemented", .{});
+fn installTarget__x86_64_windows_msvc(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
+    try installTargetFromArchive(
+        io,
+        allocator,
+        toolchain_path,
+        &.{
+            .name = "x86_64-windows-msvc",
+            .archive_filename = "windows-sdk.nupkg",
+            .url = "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp.x64/10.0.26100.9457/microsoft.windows.sdk.cpp.x64.10.0.26100.9457.nupkg",
+            .shasum = "52bd17c63d3b6d268f385c358f34d0eb595b9c1deb3273855abd2ec5c095d132",
+            .needed_files = &.{
+                .{ .src = &.{ "c", "um", "x64", "kernel32.Lib" }, .dest = "kernel32.lib" },
+                .{ .src = &.{ "c", "ucrt", "x64", "ucrt.lib" } },
+                .{ .src = &.{ "c", "ucrt", "x64", "libucrt.lib" } },
+            },
+            .type = .zip,
+        },
+    );
+
+    const msvc_version = "14.50.35717";
+    try installTargetFromArchive(
+        io,
+        allocator,
+        toolchain_path,
+        &.{
+            .name = "x86_64-windows-msvc",
+            .archive_filename = "msvc-crt-x64-desktop.vsix",
+            .url = "https://download.visualstudio.microsoft.com/download/pr/4cb7a450-4979-4d07-89e7-6613722fc25e/f538fed4fbf0fff460fa0a35f179319586d24c61804ab5d9780707cfd6353556/Microsoft.VC.14.50.18.0.CRT.x64.Desktop.base.vsix",
+            .shasum = "f538fed4fbf0fff460fa0a35f179319586d24c61804ab5d9780707cfd6353556",
+            .needed_files = &.{
+                .{ .src = &.{ "Contents", "VC", "Tools", "MSVC", msvc_version, "lib", "x64", "libcmt.lib" } },
+                .{ .src = &.{ "Contents", "VC", "Tools", "MSVC", msvc_version, "lib", "x64", "libvcruntime.lib" } },
+                .{ .src = &.{ "Contents", "VC", "Tools", "MSVC", msvc_version, "lib", "x64", "libcpmt.lib" } },
+            },
+            .type = .zip,
+        },
+    );
+    try installTargetFromArchive(
+        io,
+        allocator,
+        toolchain_path,
+        &.{
+            .name = "x86_64-windows-msvc",
+            .archive_filename = "msvc-crt-x64-store.vsix",
+            .url = "https://download.visualstudio.microsoft.com/download/pr/4cb7a450-4979-4d07-89e7-6613722fc25e/ba895895ded7143f953a4ca0d6f0505df1844fdd138f9a18b61c395322ad11b3/Microsoft.VC.14.50.18.0.CRT.x64.Store.base.vsix",
+            .shasum = "ba895895ded7143f953a4ca0d6f0505df1844fdd138f9a18b61c395322ad11b3",
+            .needed_files = &.{
+                .{ .src = &.{ "Contents", "VC", "Tools", "MSVC", msvc_version, "lib", "x64", "msvcrt.lib" } },
+                .{ .src = &.{ "Contents", "VC", "Tools", "MSVC", msvc_version, "lib", "x64", "vcruntime.lib" } },
+                .{ .src = &.{ "Contents", "VC", "Tools", "MSVC", msvc_version, "lib", "x64", "msvcprt.lib" } },
+                .{ .src = &.{ "Contents", "VC", "Tools", "MSVC", msvc_version, "lib", "x64", "oldnames.lib" } },
+            },
+            .type = .zip,
+        },
+    );
 }
 
 fn installTarget__x86_64_linux_gnu() void {
@@ -282,7 +338,7 @@ fn installTarget__x86_64_linux_gnu() void {
 }
 
 fn installTarget__x86_64_linux_musl(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
-    try installTargetFromTarGz(
+    try installTargetFromArchive(
         io,
         allocator,
         toolchain_path,
@@ -291,35 +347,47 @@ fn installTarget__x86_64_linux_musl(io: std.Io, allocator: std.mem.Allocator, to
             .archive_filename = "x86_64-linux-musl-cross.tgz",
             .url = "https://github.com/musl-cc/musl.cc/releases/download/v0.0.1/x86_64-linux-musl-cross.tgz",
             .shasum = "c5d410d9f82a4f24c549fe5d24f988f85b2679b452413a9f7e5f7b956f2fe7ea",
-            .strip_components = 1,
             .needed_files = &.{
-                &.{ "x86_64-linux-musl", "lib", "libc.so" },
-                &.{ "x86_64-linux-musl", "lib", "libc.a" },
-                &.{ "x86_64-linux-musl", "lib", "Scrt1.o" },
-                &.{ "x86_64-linux-musl", "lib", "crt1.o" },
-                &.{ "x86_64-linux-musl", "lib", "crti.o" },
-                &.{ "x86_64-linux-musl", "lib", "crtn.o" },
-                &.{ "lib", "gcc", "x86_64-linux-musl", "11.2.1", "libgcc.a" },
-                &.{ "lib", "gcc", "x86_64-linux-musl", "11.2.1", "libgcc_eh.a" },
+                .{ .src = &.{ "x86_64-linux-musl", "lib", "libc.so" } },
+                .{ .src = &.{ "x86_64-linux-musl", "lib", "libc.a" } },
+                .{ .src = &.{ "x86_64-linux-musl", "lib", "Scrt1.o" } },
+                .{ .src = &.{ "x86_64-linux-musl", "lib", "crt1.o" } },
+                .{ .src = &.{ "x86_64-linux-musl", "lib", "crti.o" } },
+                .{ .src = &.{ "x86_64-linux-musl", "lib", "crtn.o" } },
+                .{ .src = &.{ "lib", "gcc", "x86_64-linux-musl", "11.2.1", "libgcc.a" } },
+                .{ .src = &.{ "lib", "gcc", "x86_64-linux-musl", "11.2.1", "libgcc_eh.a" } },
             },
+            .type = .{ .tar_gz = .{ .strip_components = 1 } },
         },
     );
 }
 
-const InstallTargetFromTarGzOptions = struct {
+const InstallTargetFromArchiveOptions = struct {
     name: []const u8,
     archive_filename: []const u8,
     url: []const u8,
     shasum: []const u8,
-    strip_components: u32 = 1,
-    needed_files: []const []const []const u8,
+    needed_files: []const struct {
+        src: []const []const u8,
+        /// The name of the file to put into the flat target directory, if a file needs to be renamed
+        /// When this is 'null' then just the filename of 'src' is used
+        dest: ?[]const u8 = null,
+    },
+
+    /// The archive type + extra options for that type
+    type: union(enum) {
+        tar_gz: struct {
+            strip_components: u32 = 1,
+        },
+        zip: void,
+    },
 };
 
-fn installTargetFromTarGz(
+fn installTargetFromArchive(
     io: std.Io,
     allocator: std.mem.Allocator,
     toolchain_path: []const u8,
-    options: *const InstallTargetFromTarGzOptions,
+    options: *const InstallTargetFromArchiveOptions,
 ) !void {
     const sep = std.fs.path.sep;
     const targets_dir_path: []const u8 = try allocator.print("{s}{c}targets", .{ toolchain_path, sep });
@@ -337,32 +405,46 @@ fn installTargetFromTarGz(
     };
 
     // 1. Download
-    const tar_gz_path: []const u8 = try allocator.print("{s}{c}{s}", .{ target_dir_path, sep, options.archive_filename });
-    defer allocator.free(tar_gz_path);
-    try net.downloadFile(io, allocator, options.url, tar_gz_path);
+    const archive_path: []const u8 = try allocator.print("{s}{c}{s}", .{ target_dir_path, sep, options.archive_filename });
+    defer allocator.free(archive_path);
+    try net.downloadFile(io, allocator, options.url, archive_path);
 
     // 2. Verify shasum
-    try net.checkFileIntegrity(io, allocator, tar_gz_path, options.shasum);
+    try net.checkFileIntegrity(io, allocator, archive_path, options.shasum);
 
     // 3. Extract
-    const tmp_extract_path: []const u8 = try allocator.print("{s}{c}extract", .{ target_dir_path, sep });
-    defer allocator.free(tmp_extract_path);
-    std.Io.Dir.cwd().createDir(io, tmp_extract_path, .default_dir) catch |err| switch (err) {
-        error.PathAlreadyExists => {},
-        else => return err,
-    };
-    try extract.tarGz(io, allocator, tar_gz_path, tmp_extract_path, options.strip_components);
+    const extracted_path: []const u8 = try allocator.print("{s}{c}{s}-extracted", .{
+        target_dir_path,
+        sep,
+        options.archive_filename,
+    });
+    defer allocator.free(extracted_path);
+    try std.Io.Dir.cwd().deleteTree(io, extracted_path);
+    try std.Io.Dir.cwd().createDir(io, extracted_path, .default_dir);
+    switch (options.type) {
+        .tar_gz => |tar_gz| {
+            try extract.tarGz(io, allocator, archive_path, extracted_path, tar_gz.strip_components);
+        },
+        .zip => {
+            try extract.zip(io, archive_path, extracted_path);
+        },
+    }
 
     // 4. Copy needed libs
     const dest_dir: std.Io.Dir = try std.Io.Dir.cwd().openDir(io, target_dir_path, .{});
     defer dest_dir.close(io);
-    for (options.needed_files) |file_path| {
-        const filename = file_path[file_path.len - 1];
-        const dest_path: []const u8 = try allocator.print("{s}{c}{s}", .{ target_dir_path, sep, filename });
+    for (options.needed_files) |needed_file| {
+        const dest_path: []const u8 =
+            if (needed_file.dest) |dest|
+                try allocator.print("{s}{c}{s}", .{ target_dir_path, sep, dest })
+            else blk: {
+                const filename = needed_file.src[needed_file.src.len - 1];
+                break :blk try allocator.print("{s}{c}{s}", .{ target_dir_path, sep, filename });
+            };
         defer allocator.free(dest_path);
 
-        var source_path = tmp_extract_path;
-        for (file_path, 0..) |subdir, i| {
+        var source_path = extracted_path;
+        for (needed_file.src, 0..) |subdir, i| {
             const new_subdir = try allocator.print("{s}{c}{s}", .{ source_path, sep, subdir });
             if (i > 0) {
                 allocator.free(source_path);
@@ -371,12 +453,16 @@ fn installTargetFromTarGz(
         }
         defer allocator.free(source_path);
 
-        try std.Io.Dir.cwd().copyFile(source_path, dest_dir, dest_path, io, .{});
+        std.Io.Dir.cwd().copyFile(source_path, dest_dir, dest_path, io, .{}) catch |err| switch (err) {
+            error.FileNotFound => {
+                std.log.err("Cannot copy file '{s}'", .{source_path});
+                return err;
+            },
+            else => return err,
+        };
     }
 
     // 5. Delete downloaded .tgz and temp dir
-    try std.Io.Dir.cwd().deleteFile(io, tar_gz_path);
-    try std.Io.Dir.cwd().deleteTree(io, tmp_extract_path);
-
-    std.log.info("Installed target '{s}' successfully", .{options.name});
+    try std.Io.Dir.cwd().deleteFile(io, archive_path);
+    try std.Io.Dir.cwd().deleteTree(io, extracted_path);
 }

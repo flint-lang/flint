@@ -79,3 +79,27 @@ pub fn tarGz(
 
     std.log.info("Successfully extracted archive to {s}.", .{extract_to});
 }
+
+pub fn zip(io: std.Io, zip_path: []const u8, extract_to: []const u8) !void {
+    // Open the ZIP file.
+    const zip_file = try std.Io.Dir.cwd().openFile(io, zip_path, .{});
+    defer zip_file.close(io);
+
+    // Create a file reader.
+    var reader_buffer: [8192]u8 = @splat(0);
+    var file_reader = zip_file.reader(io, &reader_buffer);
+
+    // Open the extraction directory.
+    var target_dir = try std.Io.Dir.cwd().openDir(io, extract_to, .{});
+    defer target_dir.close(io);
+
+    std.log.info("Extracting ZIP archive to {s}, this may take a while...", .{
+        extract_to,
+    });
+
+    try std.zip.extract(target_dir, &file_reader, .{});
+
+    std.log.info("Successfully extracted ZIP archive to {s}.", .{
+        extract_to,
+    });
+}
