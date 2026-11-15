@@ -401,6 +401,49 @@ pub fn removeToolchainInstalled(
     try save(io, allocator, toolchain_path);
 }
 
+pub fn removeTargetInstalled(
+    io: std.Io,
+    allocator: std.mem.Allocator,
+    arena: std.mem.Allocator,
+    toolchain_path: []const u8,
+    triple: Triple,
+) !void {
+    const sep = std.fs.path.sep;
+    _ = try get(io, allocator, arena, toolchain_path);
+
+    const triple_str = try triple.toString(allocator);
+    defer allocator.free(triple_str);
+
+    var new_list: std.ArrayList(Triple) = .empty;
+    defer new_list.deinit(allocator);
+    var removed: bool = false;
+    for (state.?.installed_targets) |installed| {
+        if (installed.equals(triple)) {
+            std.debug.assert(!removed);
+            const version_path = try std.fmt.allocPrint(allocator, "{0s}{1c}targets{1c}{2s}", .{
+                toolchain_path,
+                sep,
+                triple_str,
+            });
+            defer allocator.free(version_path);
+            try std.Io.Dir.cwd().deleteTree(io, version_path);
+            removed = true;
+            continue;
+        }
+        try new_list.append(allocator, installed);
+    }
+    if (!removed) {
+        std.log.err("Target '{0s}' is not installed and thus cannot be removed", .{triple_str});
+        return error.TargetNotPresent;
+    }
+    const new_list_slice = try new_list.toOwnedSlice(allocator);
+    allocator.free(state.?.installed_targets);
+    state.?.installed_targets = new_list_slice;
+
+    try save(io, allocator, toolchain_path);
+    std.log.info("Removed target '{s}' successfully", .{triple_str});
+}
+
 pub fn setActiveToolchain(
     io: std.Io,
     allocator: std.mem.Allocator,

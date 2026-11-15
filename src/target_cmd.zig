@@ -203,8 +203,8 @@ pub fn main(
             return 0;
         },
         .remove => {
-            std.log.debug("'remove' command not implemented yet", .{});
-            return 1;
+            try State.removeTargetInstalled(io, gpa, arena, toolchain_path, triple);
+            return 0;
         },
     };
 }
