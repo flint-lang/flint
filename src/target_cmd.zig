@@ -195,7 +195,7 @@ pub fn main(
             } else if (triple.equals(Triple.x86_64_windows_msvc)) {
                 try installTarget__x86_64_windows_msvc(io, gpa, toolchain_path);
             } else if (triple.equals(Triple.x86_64_linux_gnu)) {
-                installTarget__x86_64_linux_gnu();
+                try installTarget__x86_64_linux_gnu();
             } else if (triple.equals(Triple.x86_64_linux_musl)) {
                 try installTarget__x86_64_linux_musl(io, gpa, toolchain_path);
             }
@@ -335,8 +335,9 @@ fn installTarget__x86_64_windows_msvc(io: std.Io, allocator: std.mem.Allocator, 
     );
 }
 
-fn installTarget__x86_64_linux_gnu() void {
+fn installTarget__x86_64_linux_gnu() !void {
     std.log.debug("The 'x86_64-linux-gnu' target is not yet implemented", .{});
+    return error.NotImplementedYet;
 }
 
 fn installTarget__x86_64_linux_musl(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
@@ -362,6 +363,13 @@ fn installTarget__x86_64_linux_musl(io: std.Io, allocator: std.mem.Allocator, to
             .type = .{ .tar_gz = .{ .strip_components = 1 } },
         },
     );
+
+    const sep = std.fs.path.sep;
+    const target_dir_path = try allocator.print("{0s}{1c}targets{1c}x86_64-linux-musl", .{ toolchain_path, sep });
+    defer allocator.free(target_dir_path);
+    const target_dir = try std.Io.Dir.cwd().openDir(io, target_dir_path, .{});
+    defer target_dir.close(io);
+    try target_dir.symLink(io, "libc.so", "ld-musl-x86_64.so.1", .{});
 }
 
 const InstallTargetFromArchiveOptions = struct {
