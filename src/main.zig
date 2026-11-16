@@ -99,7 +99,11 @@ pub fn main(init: std.process.Init) !u8 {
     var iter = try init.minimal.args.iterateAllocator(allocator);
     defer iter.deinit();
 
-    _ = iter.next();
+    if (!iter.skip()) {
+        unreachable;
+    }
+    const argv = try init.minimal.args.toSlice(init.arena.allocator());
+    const command_arg: []const u8 = if (argv.len > 1) argv[1] else "<missing>";
 
     var diag_clap = clap.Diagnostic{};
     var res = clap.parseEx(clap.Help, &params, parsers, &iter, .{
@@ -107,7 +111,7 @@ pub fn main(init: std.process.Init) !u8 {
         .allocator = allocator,
         .terminating_positional = 0,
     }) catch {
-        std.log.err("Invalid <command>: {s}", .{init.minimal.args.vector[1]});
+        std.log.err("Invalid <command>: {s}", .{command_arg});
         try printHelp(stderr);
         return 1;
     };
