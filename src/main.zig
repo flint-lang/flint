@@ -90,6 +90,17 @@ pub fn main(init: std.process.Init) !u8 {
     var stderr_writer = std.Io.File.stderr().writer(init.io, &.{});
     const stderr = &stderr_writer.interface;
 
+    // Set output to UTF-8 on windows
+    if (builtin.os.tag == .windows) {
+        const Api = struct {
+            const CP_UTF8: u32 = 65001;
+            extern "kernel32" fn SetConsoleOutputCP(code_page: u32) callconv(.winapi) i32;
+        };
+        if (Api.SetConsoleOutputCP(Api.CP_UTF8) == 0) {
+            std.log.warn("Could not set console output code page to UTF-8", .{});
+        }
+    }
+
     const toolchain_path = try getToolchainPath(init.io, allocator, init.environ_map);
     defer allocator.free(toolchain_path);
 
