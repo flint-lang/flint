@@ -41,6 +41,7 @@ pub fn get(io: std.Io, allocator: std.mem.Allocator, arena: std.mem.Allocator, t
             \\    .fip_installed = .{
             \\        .c = .{},
             \\    },
+            \\    .installed_targets = .{},
             \\}
             \\
         );
