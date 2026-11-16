@@ -288,6 +288,7 @@ fn installTarget__x86_64_windows_msvc(io: std.Io, allocator: std.mem.Allocator, 
             .shasum = "52bd17c63d3b6d268f385c358f34d0eb595b9c1deb3273855abd2ec5c095d132",
             .needed_files = &.{
                 .{ .src = &.{ "c", "um", "x64", "kernel32.Lib" }, .dest = "kernel32.lib" },
+                .{ .src = &.{ "c", "um", "x64", "Uuid.Lib" }, .dest = "uuid.lib" },
                 .{ .src = &.{ "c", "ucrt", "x64", "ucrt.lib" } },
                 .{ .src = &.{ "c", "ucrt", "x64", "libucrt.lib" } },
             },
