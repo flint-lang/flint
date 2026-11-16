@@ -195,7 +195,7 @@ pub fn main(
             } else if (triple.equals(Triple.x86_64_windows_msvc)) {
                 try installTarget__x86_64_windows_msvc(io, gpa, toolchain_path);
             } else if (triple.equals(Triple.x86_64_linux_gnu)) {
-                try installTarget__x86_64_linux_gnu();
+                try installTarget__x86_64_linux_gnu(io, gpa, toolchain_path);
             } else if (triple.equals(Triple.x86_64_linux_musl)) {
                 try installTarget__x86_64_linux_musl(io, gpa, toolchain_path);
             }
@@ -335,9 +335,61 @@ fn installTarget__x86_64_windows_msvc(io: std.Io, allocator: std.mem.Allocator, 
     );
 }
 
-fn installTarget__x86_64_linux_gnu() !void {
-    std.log.debug("The 'x86_64-linux-gnu' target is not yet implemented", .{});
-    return error.NotImplementedYet;
+fn installTarget__x86_64_linux_gnu(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
+    try installTargetFromArchive(
+        io,
+        allocator,
+        toolchain_path,
+        &.{
+            .name = "x86_64-linux-gnu",
+            .archive_filename = "sysroot_linux-64-2.34-h087de78_3.conda",
+            .url = "https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.34-h087de78_3.conda",
+            .shasum = "08c50c314b331730eeb8f87c39a45e5426a5463e078392ab283e2552d753443e",
+            .needed_files = &.{
+                .{ .src = &.{ "sysroot", "usr", "lib64", "Scrt1.o" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "crt1.o" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "crti.o" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "crtn.o" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "libc.a" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "libm.a" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "libc_nonshared.a" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "libc.so" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "libm.so" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "libmvec.a" } },
+                .{ .src = &.{ "sysroot", "usr", "lib64", "libm-2.34.a" } },
+                .{ .src = &.{ "sysroot", "lib64", "libc.so.6" } },
+                .{ .src = &.{ "sysroot", "lib64", "libm.so.6" } },
+                .{ .src = &.{ "sysroot", "lib64", "libmvec.so.1" } },
+                .{ .src = &.{ "sysroot", "lib64", "ld-linux-x86-64.so.2" } },
+            },
+            .type = .{ .conda = .{ .strip_components = 1 } },
+        },
+    );
+
+    try installTargetFromArchive(
+        io,
+        allocator,
+        toolchain_path,
+        &.{
+            .name = "x86_64-linux-gnu",
+            .archive_filename = "libgcc-devel_linux-64-13.2.0-ha9c7c90_2.conda",
+            .url = "https://conda.anaconda.org/conda-forge/linux-64/libgcc-devel_linux-64-13.2.0-ha9c7c90_2.conda",
+            .shasum = "628a2c0ae7cb16b16218839d636a93b6cd27e6e464f003aa54a86cae06759759",
+            .needed_files = &.{
+                .{ .src = &.{"libgcc.a"} },
+                .{ .src = &.{"libgcc_eh.a"} },
+            },
+            .type = .{ .conda = .{ .strip_components = 4 } },
+        },
+    );
+
+    const sep = std.fs.path.sep;
+    const target_dir_path = try allocator.print("{0s}{1c}targets{1c}x86_64-linux-gnu", .{ toolchain_path, sep });
+    defer allocator.free(target_dir_path);
+    const target_dir = try std.Io.Dir.cwd().openDir(io, target_dir_path, .{});
+    defer target_dir.close(io);
+    try target_dir.symLink(io, ".", "usr", .{ .is_directory = true });
+    try target_dir.symLink(io, ".", "lib64", .{ .is_directory = true });
 }
 
 fn installTarget__x86_64_linux_musl(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !void {
@@ -387,9 +439,15 @@ const InstallTargetFromArchiveOptions = struct {
     /// The archive type + extra options for that type
     type: union(enum) {
         tar_gz: struct {
-            strip_components: u32 = 1,
+            strip_components: u32,
+        },
+        tar_zst: struct {
+            strip_components: u32,
         },
         zip: void,
+        conda: struct {
+            strip_components: u32,
+        },
     },
 };
 
@@ -435,8 +493,14 @@ fn installTargetFromArchive(
         .tar_gz => |tar_gz| {
             try extract.tarGz(io, allocator, archive_path, extracted_path, tar_gz.strip_components);
         },
+        .tar_zst => |tar_zst| {
+            try extract.tarZst(io, allocator, archive_path, extracted_path, tar_zst.strip_components);
+        },
         .zip => {
             try extract.zip(io, archive_path, extracted_path);
+        },
+        .conda => |conda| {
+            try extract.conda(io, allocator, archive_path, extracted_path, conda.strip_components);
         },
     }
 
