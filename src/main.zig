@@ -450,10 +450,12 @@ fn installPlatformArtifacts(
     defer allocator.free(toolchain_bin_path);
     try std.Io.Dir.cwd().createDirPath(io, toolchain_bin_path);
 
-    const flintc_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}flintc", .{ toolchain_bin_path, sep });
+    const ext: []const u8 = if (builtin.os.tag == .windows) ".exe" else "";
+
+    const flintc_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}flintc{s}", .{ toolchain_bin_path, sep, ext });
     defer allocator.free(flintc_bin_path);
 
-    const fls_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}fls", .{ toolchain_bin_path, sep });
+    const fls_bin_path = try std.fmt.allocPrint(allocator, "{s}{c}fls{s}", .{ toolchain_bin_path, sep, ext });
     defer allocator.free(fls_bin_path);
 
     try net.downloadFile(io, allocator, artifacts.flintc.url, flintc_bin_path);

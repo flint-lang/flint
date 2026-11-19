@@ -493,10 +493,17 @@ fn save(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !v
     const sep = std.fs.path.sep;
     const active_toolchain_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}active", .{ toolchain_path, sep });
     defer allocator.free(active_toolchain_path);
-    std.Io.Dir.cwd().deleteFile(io, active_toolchain_path) catch |err| switch (err) {
-        error.FileNotFound => {},
-        else => return err,
-    };
+    if (builtin.os.tag == .windows) {
+        std.Io.Dir.cwd().deleteDir(io, active_toolchain_path) catch |err| switch (err) {
+            error.FileNotFound => {},
+            else => return err,
+        };
+    } else {
+        std.Io.Dir.cwd().deleteFile(io, active_toolchain_path) catch |err| switch (err) {
+            error.FileNotFound => {},
+            else => return err,
+        };
+    }
     if (state.?.toolchain_active) |target| {
         const target_path = try std.fmt.allocPrint(allocator, "{0s}{1c}toolchain{1c}{2s}", .{ toolchain_path, sep, target });
         defer allocator.free(target_path);
@@ -506,10 +513,17 @@ fn save(io: std.Io, allocator: std.mem.Allocator, toolchain_path: []const u8) !v
 
     const active_bundle_path = try std.fmt.allocPrint(allocator, "{0s}{1c}bundles{1c}active", .{ toolchain_path, sep });
     defer allocator.free(active_bundle_path);
-    std.Io.Dir.cwd().deleteFile(io, active_bundle_path) catch |err| switch (err) {
-        error.FileNotFound => {},
-        else => return err,
-    };
+    if (builtin.os.tag == .windows) {
+        std.Io.Dir.cwd().deleteDir(io, active_bundle_path) catch |err| switch (err) {
+            error.FileNotFound => {},
+            else => return err,
+        };
+    } else {
+        std.Io.Dir.cwd().deleteFile(io, active_bundle_path) catch |err| switch (err) {
+            error.FileNotFound => {},
+            else => return err,
+        };
+    }
     if (state.?.bundle_active) |target| {
         const target_path = try std.fmt.allocPrint(allocator, "{0s}{1c}bundles{1c}{2s}", .{ toolchain_path, sep, target });
         defer allocator.free(target_path);

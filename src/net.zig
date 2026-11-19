@@ -23,7 +23,7 @@ pub fn downloadFile(io: std.Io, allocator: std.mem.Allocator, url: []const u8, f
 
     if (status.class() != .success) {
         std.log.err("download failed: {d} {s}", .{
-            @intFromEnum(status),
+            @backingInt(status),
             status.phrase() orelse "unknown",
         });
         return error.HttpRequestFailed;
