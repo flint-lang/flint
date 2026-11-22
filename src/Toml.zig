@@ -3,6 +3,11 @@ const std = @import("std");
 
 const Self = @This();
 
+// Flags to enable debug printing
+const PRINT_TOKENS = false;
+const PRINT_LINES = false;
+const PRINT_DEPS = false;
+
 var toml: ?Self = null;
 
 config: Config,
@@ -31,8 +36,13 @@ pub const Dep = struct {
 
         pub const Link = struct {
             url: []const u8 = "",
-            tag: []const u8 = "",
-            hash: []const u8 = "",
+            tag_or_rev: union(enum) {
+                // NOTE: This value is only intended to be used during parsing, after parsing no value should be 'none', at all
+                none: void,
+                tag: []const u8,
+                rev: []const u8,
+            } = .none,
+            sha256: []const u8 = "",
         };
     };
 };
@@ -54,63 +64,65 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
     };
 
     const res = try Token.tokenize(arena, src);
-    // std.debug.print("====== TOKENS BEGIN ======\n", .{});
-    // const wl = std.math.log(usize, 10, res.positions[res.positions.len - 1].line) + 1;
-    // var wc: usize = 1;
-    // for (res.positions) |pos| {
-    //     wc = @max(wc, std.math.log(usize, 10, pos.col) + 1);
-    // }
-    // for (res.tokens, res.positions) |token, pos| {
-    //     switch (token) {
-    //         .identifier => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .identifier | {[val]s}\n", .{
-    //             .line = pos.line,
-    //             .wl = wl,
-    //             .col = pos.col,
-    //             .wc = wc,
-    //             .val = value,
-    //         }),
-    //         .string => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .string     | {[val]q}\n", .{
-    //             .line = pos.line,
-    //             .wl = wl,
-    //             .col = pos.col,
-    //             .wc = wc,
-    //             .val = value,
-    //         }),
-    //         .number => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .number     | {[val]d}\n", .{
-    //             .line = pos.line,
-    //             .wl = wl,
-    //             .col = pos.col,
-    //             .wc = wc,
-    //             .val = value,
-    //         }),
-    //         .bool => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .bool       | {[val]}\n", .{
-    //             .line = pos.line,
-    //             .wl = wl,
-    //             .col = pos.col,
-    //             .wc = wc,
-    //             .val = value,
-    //         }),
-    //         .l_bracket => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .l_bracket  | [\n", .{
-    //             .line = pos.line,
-    //             .wl = wl,
-    //             .col = pos.col,
-    //             .wc = wc,
-    //         }),
-    //         .r_bracket => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .r_bracket  | ]\n", .{
-    //             .line = pos.line,
-    //             .wl = wl,
-    //             .col = pos.col,
-    //             .wc = wc,
-    //         }),
-    //         .equals => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .equals     | =\n", .{
-    //             .line = pos.line,
-    //             .wl = wl,
-    //             .col = pos.col,
-    //             .wc = wc,
-    //         }),
-    //     }
-    // }
-    // std.debug.print("======= TOKENS END =======\n", .{});
+    if (PRINT_TOKENS) {
+        std.debug.print("====== TOKENS BEGIN ======\n", .{});
+        const wl = std.math.log(usize, 10, res.positions[res.positions.len - 1].line) + 1;
+        var wc: usize = 1;
+        for (res.positions) |pos| {
+            wc = @max(wc, std.math.log(usize, 10, pos.col) + 1);
+        }
+        for (res.tokens, res.positions) |token, pos| {
+            switch (token) {
+                .identifier => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .identifier | {[val]s}\n", .{
+                    .line = pos.line,
+                    .wl = wl,
+                    .col = pos.col,
+                    .wc = wc,
+                    .val = value,
+                }),
+                .string => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .string     | {[val]q}\n", .{
+                    .line = pos.line,
+                    .wl = wl,
+                    .col = pos.col,
+                    .wc = wc,
+                    .val = value,
+                }),
+                .number => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .number     | {[val]d}\n", .{
+                    .line = pos.line,
+                    .wl = wl,
+                    .col = pos.col,
+                    .wc = wc,
+                    .val = value,
+                }),
+                .bool => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .bool       | {[val]}\n", .{
+                    .line = pos.line,
+                    .wl = wl,
+                    .col = pos.col,
+                    .wc = wc,
+                    .val = value,
+                }),
+                .l_bracket => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .l_bracket  | [\n", .{
+                    .line = pos.line,
+                    .wl = wl,
+                    .col = pos.col,
+                    .wc = wc,
+                }),
+                .r_bracket => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .r_bracket  | ]\n", .{
+                    .line = pos.line,
+                    .wl = wl,
+                    .col = pos.col,
+                    .wc = wc,
+                }),
+                .equals => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .equals     | =\n", .{
+                    .line = pos.line,
+                    .wl = wl,
+                    .col = pos.col,
+                    .wc = wc,
+                }),
+            }
+        }
+        std.debug.print("======= TOKENS END =======\n", .{});
+    }
 
     const TagOrField = union(enum) {
         tag: []const u8,
@@ -198,18 +210,20 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
             },
         }
     }
-    // std.debug.print("\n====== LINES BEGIN ======\n", .{});
-    // for (line_list.items) |line| {
-    //     switch (line) {
-    //         .tag => |tag| std.debug.print("[{s}]\n", .{tag}),
-    //         .field => |field| switch (field.value) {
-    //             .string => |value| std.debug.print("{s} = {q}\n", .{ field.name, value }),
-    //             .number => |value| std.debug.print("{s} = {d}\n", .{ field.name, value }),
-    //             .bool => |value| std.debug.print("{s} = {}\n", .{ field.name, value }),
-    //         },
-    //     }
-    // }
-    // std.debug.print("======= LINES END =======\n", .{});
+    if (PRINT_LINES) {
+        std.debug.print("\n====== LINES BEGIN ======\n", .{});
+        for (line_list.items) |line| {
+            switch (line) {
+                .tag => |tag| std.debug.print("[{s}]\n", .{tag}),
+                .field => |field| switch (field.value) {
+                    .string => |value| std.debug.print("{s} = {q}\n", .{ field.name, value }),
+                    .number => |value| std.debug.print("{s} = {d}\n", .{ field.name, value }),
+                    .bool => |value| std.debug.print("{s} = {}\n", .{ field.name, value }),
+                },
+            }
+        }
+        std.debug.print("======= LINES END =======\n", .{});
+    }
 
     var config: Config = .{};
     var config_parsed: bool = false;
@@ -229,7 +243,8 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
             link: struct {
                 url_parsed: bool = false,
                 tag_parsed: bool = false,
-                hash_parsed: bool = false,
+                rev_parsed: bool = false,
+                sha256_parsed: bool = false,
             },
         } = null,
 
@@ -249,13 +264,13 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
                                 std.log.err("Missing required field 'url' in dependency {s}", .{tag});
                                 return error.MissingFieldUrl;
                             }
-                            if (!link.tag_parsed) {
-                                std.log.err("Missing required field 'tag' in dependency {s}", .{tag});
-                                return error.MissingFieldTag;
+                            if (!link.tag_parsed and !link.rev_parsed) {
+                                std.log.err("Missing one of required fields 'tag' or 'rev' in dependency {s}", .{tag});
+                                return error.MissingFieldTagOrRev;
                             }
-                            if (!link.hash_parsed) {
-                                std.log.err("Missing required field 'hash' in dependency {s}", .{tag});
-                                return error.MissingFieldHash;
+                            if (!link.sha256_parsed) {
+                                std.log.err("Missing required field 'sha256' in dependency {s}", .{tag});
+                                return error.MissingFieldSha256;
                             }
                         },
                     }
@@ -342,7 +357,7 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
                 } else if (std.mem.eql(u8, field.name, "path")) {
                     try field.value.expect(.string, "path");
                     if (current_dep_parsed.src_parsed != null and current_dep_parsed.src_parsed.? == .link) {
-                        std.log.err("Field 'path' in dependency '{s}' is not allowed to coexist with url-based fields 'url', 'tag' and 'hash'", .{
+                        std.log.err("Field 'path' in dependency '{s}' is not allowed to coexist with url-based fields 'url', ('tag' or 'rev) and 'sha256'", .{
                             current_dep.name,
                         });
                         return error.DependencyPathWithUrl;
@@ -384,15 +399,21 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
                         std.log.err("Duplicate field 'tag' in dependency '{s}'", .{current_dep.name});
                         return error.DependencyDuplicateField;
                     }
+                    if (current_dep_parsed.src_parsed.?.link.rev_parsed) {
+                        std.log.err("Field 'tag' in dependency '{s}' is not allowed to coexist with the 'rev' field. Choose one", .{
+                            current_dep.name,
+                        });
+                        return error.DependencyUrlWithPath;
+                    }
                     current_dep_parsed.src_parsed.?.link.tag_parsed = true;
                     if (current_dep.src == .none) {
                         current_dep.src = .{ .link = .{} };
                     }
-                    current_dep.src.link.tag = field.value.string;
-                } else if (std.mem.eql(u8, field.name, "hash")) {
-                    try field.value.expect(.string, "hash");
+                    current_dep.src.link.tag_or_rev = .{ .tag = field.value.string };
+                } else if (std.mem.eql(u8, field.name, "rev")) {
+                    try field.value.expect(.string, "rev");
                     if (current_dep_parsed.src_parsed != null and current_dep_parsed.src_parsed.? == .path) {
-                        std.log.err("Field 'hash' in dependency '{s}' is not allowed to coexist with the 'path' field. Choose one", .{
+                        std.log.err("Field 'rev' in dependency '{s}' is not allowed to coexist with the 'path' field. Choose one", .{
                             current_dep.name,
                         });
                         return error.DependencyUrlWithPath;
@@ -400,15 +421,41 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
                     if (current_dep_parsed.src_parsed == null) {
                         current_dep_parsed.src_parsed = .{ .link = .{} };
                     }
-                    if (current_dep_parsed.src_parsed.?.link.hash_parsed) {
-                        std.log.err("Duplicate field 'hash' in dependency '{s}'", .{current_dep.name});
+                    if (current_dep_parsed.src_parsed.?.link.rev_parsed) {
+                        std.log.err("Duplicate field 'rev' in dependency '{s}'", .{current_dep.name});
                         return error.DependencyDuplicateField;
                     }
-                    current_dep_parsed.src_parsed.?.link.hash_parsed = true;
+                    if (current_dep_parsed.src_parsed.?.link.tag_parsed) {
+                        std.log.err("Field 'rev' in dependency '{s}' is not allowed to coexist with the 'tag' field. Choose one", .{
+                            current_dep.name,
+                        });
+                        return error.DependencyUrlWithPath;
+                    }
+                    current_dep_parsed.src_parsed.?.link.rev_parsed = true;
                     if (current_dep.src == .none) {
                         current_dep.src = .{ .link = .{} };
                     }
-                    current_dep.src.link.hash = field.value.string;
+                    current_dep.src.link.tag_or_rev = .{ .rev = field.value.string };
+                } else if (std.mem.eql(u8, field.name, "sha256")) {
+                    try field.value.expect(.string, "sha256");
+                    if (current_dep_parsed.src_parsed != null and current_dep_parsed.src_parsed.? == .path) {
+                        std.log.err("Field 'sha256' in dependency '{s}' is not allowed to coexist with the 'path' field. Choose one", .{
+                            current_dep.name,
+                        });
+                        return error.DependencyUrlWithPath;
+                    }
+                    if (current_dep_parsed.src_parsed == null) {
+                        current_dep_parsed.src_parsed = .{ .link = .{} };
+                    }
+                    if (current_dep_parsed.src_parsed.?.link.sha256_parsed) {
+                        std.log.err("Duplicate field 'sha256' in dependency '{s}'", .{current_dep.name});
+                        return error.DependencyDuplicateField;
+                    }
+                    current_dep_parsed.src_parsed.?.link.sha256_parsed = true;
+                    if (current_dep.src == .none) {
+                        current_dep.src = .{ .link = .{} };
+                    }
+                    current_dep.src.link.sha256 = field.value.string;
                 } else {
                     std.log.err("Unrecognized field in dependency '{s}': {s}", .{ current_dep.name, field.name });
                     return error.DependencyUnrecognizedField;
@@ -422,42 +469,43 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
         try deps_list.append(arena, current_dep);
     }
 
-    // std.debug.print("\n======= DEPS BEGIN =======\n", .{});
-    // if (config_parsed) {
-    //     std.debug.print("[config]\n", .{});
-    //     if (config.indentation) |indentation| {
-    //         std.debug.print("indentation = {d}\n", .{indentation});
-    //     }
-    //     std.debug.print("\n", .{});
-    // }
-    // for (deps_list.items, 0..) |dep, j| {
-    //     if (j > 0) {
-    //         std.debug.print("\n", .{});
-    //     }
-    //     std.debug.print(
-    //         \\[{s}]
-    //         \\kind = {q}
-    //         \\
-    //     , .{
-    //         dep.name,
-    //         dep.kind,
-    //     });
-    //     switch (dep.src) {
-    //         .none => unreachable,
-    //         .path => |path| std.debug.print("path = {q}\n", .{path}),
-    //         .link => |link| std.debug.print(
-    //             \\url = {q}
-    //             \\tag = {q}
-    //             \\hash = {q}
-    //             \\
-    //         , .{
-    //             link.url,
-    //             link.tag,
-    //             link.hash,
-    //         }),
-    //     }
-    // }
-    // std.debug.print("======== DEPS END ========\n", .{});
+    if (PRINT_DEPS) {
+        std.debug.print("\n======= DEPS BEGIN =======\n", .{});
+        if (config_parsed) {
+            std.debug.print("[config]\n", .{});
+            if (config.indentation) |indentation| {
+                std.debug.print("indentation = {d}\n", .{indentation});
+            }
+            std.debug.print("\n", .{});
+        }
+        for (deps_list.items, 0..) |dep, j| {
+            if (j > 0) {
+                std.debug.print("\n", .{});
+            }
+            std.debug.print(
+                \\[{s}]
+                \\kind = {q}
+                \\
+            , .{
+                dep.name,
+                dep.kind,
+            });
+            switch (dep.src) {
+                .none => unreachable,
+                .path => |path| std.debug.print("path = {q}\n", .{path}),
+                .link => |link| {
+                    std.debug.print("url = {q}\n", .{link.url});
+                    switch (link.tag_or_rev) {
+                        .none => unreachable,
+                        .tag => |tag| std.debug.print("tag = {q}\n", .{tag}),
+                        .rev => |rev| std.debug.print("rev = {q}\n", .{rev}),
+                    }
+                    std.debug.print("sha256 = {q}\n", .{link.sha256});
+                },
+            }
+        }
+        std.debug.print("======== DEPS END ========\n", .{});
+    }
 
     toml = .{
         .config = config,

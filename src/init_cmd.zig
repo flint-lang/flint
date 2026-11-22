@@ -51,8 +51,8 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
             const flint_toml = &writer_flint_toml.interface;
             try flint_toml.writeAll(
                 \\# The configuration is applied project-wide across all parts of the Flint toolchain.
-                \\# [config]
-                \\# indentation = 4
+                \\[config]
+                \\indentation = 4
                 \\
                 \\# To depend on other Flint libraries you can use the 'flint' kind, for example the standard
                 \\# library. Extern dependencies can be used in Flint through 'use Std'. To use dependencies
@@ -62,7 +62,7 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
                 \\kind = "flint"
                 \\url = "https://github.com/flint-lang/std"
                 \\tag = "v0.4.2"
-                \\hash = "TODO"
+                \\sha256 = "TODO"
                 \\
             );
         },
