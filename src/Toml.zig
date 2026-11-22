@@ -509,7 +509,7 @@ const Token = union(enum) {
                 },
                 '_', 'A'...'Z', 'a'...'z' => blk: {
                     const start = i;
-                    while (i + 1 < src.len and (std.ascii.isAlphabetic(src[i + 1]) or src[i + 1] == '_')) {
+                    while (i + 1 < src.len and (std.ascii.isAlphanumeric(src[i + 1]) or src[i + 1] == '_')) {
                         i += 1;
                         col += 1;
                     }
