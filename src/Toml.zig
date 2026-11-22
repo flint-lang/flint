@@ -54,63 +54,63 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
     };
 
     const res = try Token.tokenize(arena, src);
-    std.debug.print("====== TOKENS BEGIN ======\n", .{});
-    const wl = std.math.log(usize, 10, res.positions[res.positions.len - 1].line) + 1;
-    var wc: usize = 1;
-    for (res.positions) |pos| {
-        wc = @max(wc, std.math.log(usize, 10, pos.col) + 1);
-    }
-    for (res.tokens, res.positions) |token, pos| {
-        switch (token) {
-            .identifier => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .identifier | {[val]s}\n", .{
-                .line = pos.line,
-                .wl = wl,
-                .col = pos.col,
-                .wc = wc,
-                .val = value,
-            }),
-            .string => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .string     | {[val]q}\n", .{
-                .line = pos.line,
-                .wl = wl,
-                .col = pos.col,
-                .wc = wc,
-                .val = value,
-            }),
-            .number => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .number     | {[val]d}\n", .{
-                .line = pos.line,
-                .wl = wl,
-                .col = pos.col,
-                .wc = wc,
-                .val = value,
-            }),
-            .bool => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .bool       | {[val]}\n", .{
-                .line = pos.line,
-                .wl = wl,
-                .col = pos.col,
-                .wc = wc,
-                .val = value,
-            }),
-            .l_bracket => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .l_bracket  | [\n", .{
-                .line = pos.line,
-                .wl = wl,
-                .col = pos.col,
-                .wc = wc,
-            }),
-            .r_bracket => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .r_bracket  | ]\n", .{
-                .line = pos.line,
-                .wl = wl,
-                .col = pos.col,
-                .wc = wc,
-            }),
-            .equals => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .equals     | =\n", .{
-                .line = pos.line,
-                .wl = wl,
-                .col = pos.col,
-                .wc = wc,
-            }),
-        }
-    }
-    std.debug.print("======= TOKENS END =======\n", .{});
+    // std.debug.print("====== TOKENS BEGIN ======\n", .{});
+    // const wl = std.math.log(usize, 10, res.positions[res.positions.len - 1].line) + 1;
+    // var wc: usize = 1;
+    // for (res.positions) |pos| {
+    //     wc = @max(wc, std.math.log(usize, 10, pos.col) + 1);
+    // }
+    // for (res.tokens, res.positions) |token, pos| {
+    //     switch (token) {
+    //         .identifier => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .identifier | {[val]s}\n", .{
+    //             .line = pos.line,
+    //             .wl = wl,
+    //             .col = pos.col,
+    //             .wc = wc,
+    //             .val = value,
+    //         }),
+    //         .string => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .string     | {[val]q}\n", .{
+    //             .line = pos.line,
+    //             .wl = wl,
+    //             .col = pos.col,
+    //             .wc = wc,
+    //             .val = value,
+    //         }),
+    //         .number => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .number     | {[val]d}\n", .{
+    //             .line = pos.line,
+    //             .wl = wl,
+    //             .col = pos.col,
+    //             .wc = wc,
+    //             .val = value,
+    //         }),
+    //         .bool => |value| std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .bool       | {[val]}\n", .{
+    //             .line = pos.line,
+    //             .wl = wl,
+    //             .col = pos.col,
+    //             .wc = wc,
+    //             .val = value,
+    //         }),
+    //         .l_bracket => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .l_bracket  | [\n", .{
+    //             .line = pos.line,
+    //             .wl = wl,
+    //             .col = pos.col,
+    //             .wc = wc,
+    //         }),
+    //         .r_bracket => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .r_bracket  | ]\n", .{
+    //             .line = pos.line,
+    //             .wl = wl,
+    //             .col = pos.col,
+    //             .wc = wc,
+    //         }),
+    //         .equals => std.debug.print("{[line]d: >[wl]}:{[col]d: <[wc]} | .equals     | =\n", .{
+    //             .line = pos.line,
+    //             .wl = wl,
+    //             .col = pos.col,
+    //             .wc = wc,
+    //         }),
+    //     }
+    // }
+    // std.debug.print("======= TOKENS END =======\n", .{});
 
     const TagOrField = union(enum) {
         tag: []const u8,
@@ -198,18 +198,18 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
             },
         }
     }
-    std.debug.print("\n====== LINES BEGIN ======\n", .{});
-    for (line_list.items) |line| {
-        switch (line) {
-            .tag => |tag| std.debug.print("[{s}]\n", .{tag}),
-            .field => |field| switch (field.value) {
-                .string => |value| std.debug.print("{s} = {q}\n", .{ field.name, value }),
-                .number => |value| std.debug.print("{s} = {d}\n", .{ field.name, value }),
-                .bool => |value| std.debug.print("{s} = {}\n", .{ field.name, value }),
-            },
-        }
-    }
-    std.debug.print("======= LINES END =======\n", .{});
+    // std.debug.print("\n====== LINES BEGIN ======\n", .{});
+    // for (line_list.items) |line| {
+    //     switch (line) {
+    //         .tag => |tag| std.debug.print("[{s}]\n", .{tag}),
+    //         .field => |field| switch (field.value) {
+    //             .string => |value| std.debug.print("{s} = {q}\n", .{ field.name, value }),
+    //             .number => |value| std.debug.print("{s} = {d}\n", .{ field.name, value }),
+    //             .bool => |value| std.debug.print("{s} = {}\n", .{ field.name, value }),
+    //         },
+    //     }
+    // }
+    // std.debug.print("======= LINES END =======\n", .{});
 
     var config: Config = .{};
     var config_parsed: bool = false;
@@ -422,42 +422,42 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
         try deps_list.append(arena, current_dep);
     }
 
-    std.debug.print("\n======= DEPS BEGIN =======\n", .{});
-    if (config_parsed) {
-        std.debug.print("[config]\n", .{});
-        if (config.indentation) |indentation| {
-            std.debug.print("indentation = {d}\n", .{indentation});
-        }
-        std.debug.print("\n", .{});
-    }
-    for (deps_list.items, 0..) |dep, j| {
-        if (j > 0) {
-            std.debug.print("\n", .{});
-        }
-        std.debug.print(
-            \\[{s}]
-            \\kind = {q}
-            \\
-        , .{
-            dep.name,
-            dep.kind,
-        });
-        switch (dep.src) {
-            .none => unreachable,
-            .path => |path| std.debug.print("path = {q}\n", .{path}),
-            .link => |link| std.debug.print(
-                \\url = {q}
-                \\tag = {q}
-                \\hash = {q}
-                \\
-            , .{
-                link.url,
-                link.tag,
-                link.hash,
-            }),
-        }
-    }
-    std.debug.print("======== DEPS END ========\n", .{});
+    // std.debug.print("\n======= DEPS BEGIN =======\n", .{});
+    // if (config_parsed) {
+    //     std.debug.print("[config]\n", .{});
+    //     if (config.indentation) |indentation| {
+    //         std.debug.print("indentation = {d}\n", .{indentation});
+    //     }
+    //     std.debug.print("\n", .{});
+    // }
+    // for (deps_list.items, 0..) |dep, j| {
+    //     if (j > 0) {
+    //         std.debug.print("\n", .{});
+    //     }
+    //     std.debug.print(
+    //         \\[{s}]
+    //         \\kind = {q}
+    //         \\
+    //     , .{
+    //         dep.name,
+    //         dep.kind,
+    //     });
+    //     switch (dep.src) {
+    //         .none => unreachable,
+    //         .path => |path| std.debug.print("path = {q}\n", .{path}),
+    //         .link => |link| std.debug.print(
+    //             \\url = {q}
+    //             \\tag = {q}
+    //             \\hash = {q}
+    //             \\
+    //         , .{
+    //             link.url,
+    //             link.tag,
+    //             link.hash,
+    //         }),
+    //     }
+    // }
+    // std.debug.print("======== DEPS END ========\n", .{});
 
     toml = .{
         .config = config,
