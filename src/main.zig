@@ -351,7 +351,7 @@ pub fn main(init: std.process.Init) !u8 {
         },
         .init => return init_cmd.main(init.io, allocator, iter),
         .fetch => return fetch_cmd.main(init.io, allocator, iter),
-        .build => return build_cmd.main(init.io, allocator, iter),
+        .build => return build_cmd.main(init.io, allocator, init.arena.allocator(), iter),
     }
     unreachable;
 }
