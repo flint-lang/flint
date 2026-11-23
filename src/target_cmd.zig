@@ -422,7 +422,7 @@ fn installTarget__x86_64_linux_musl(io: std.Io, allocator: std.mem.Allocator, to
     defer allocator.free(target_dir_path);
     const target_dir = try std.Io.Dir.cwd().openDir(io, target_dir_path, .{});
     defer target_dir.close(io);
-    try target_dir.symLink(io, "libc.so", "ld-musl-x86_64.so.1", .{});
+    try target_dir.symLink(io, "libc.so", "ld-musl-x86-64.so.1", .{});
 }
 
 const InstallTargetFromArchiveOptions = struct {
