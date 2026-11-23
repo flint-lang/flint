@@ -1,17 +1,130 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const clap = @import("clap");
 
-pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Iterator) !u8 {
-    _ = gpa;
+const net = @import("net.zig");
+const extract = @import("extract.zig");
 
-    const iter: std.process.Args.Iterator = iter_start;
-    _ = iter;
+const Toml = @import("Toml.zig");
 
-    var stdout_writer = std.Io.File.stdout().writer(io, &.{});
-    const stdout = &stdout_writer.interface;
-    var stderr_writer = std.Io.File.stderr().writer(io, &.{});
-    const stderr = &stderr_writer.interface;
-    _ = stdout;
-    _ = stderr;
+pub fn main(io: std.Io, environ_map: *std.process.Environ.Map, gpa: std.mem.Allocator, arena: std.mem.Allocator) !u8 {
+    const toml: Toml = try Toml.get(io, arena);
+
+    const flint_dir: std.Io.Dir = if (std.Io.Dir.cwd().openDir(io, "flint", .{})) |dir| dir else |_| blk: {
+        try std.Io.Dir.cwd().createDir(io, "flint", .default_dir);
+        break :blk try std.Io.Dir.cwd().openDir(io, "flint", .{});
+    };
+    defer flint_dir.close(io);
+
+    try flint_dir.writeFile(io, .{
+        .sub_path = ".gitignore",
+        .data =
+        \\.gitignore
+        \\.pkg
+        \\.gen
+        \\
+        ,
+    });
+
+    const flint_pkg_cache_path: []const u8 = try getPkgCacheDir(environ_map, gpa);
+    defer gpa.free(flint_pkg_cache_path);
+    try std.Io.Dir.cwd().createDirPath(io, flint_pkg_cache_path);
+
+    const flint_pkg_dir = if (flint_dir.openDir(io, ".pkg", .{})) |dir| dir else |_| blk: {
+        try flint_dir.createDir(io, ".pkg", .default_dir);
+        break :blk try flint_dir.openDir(io, ".pkg", .{});
+    };
+    defer flint_pkg_dir.close(io);
+
+    var flint_pkg_path_buffer: [std.Io.Dir.max_path_bytes]u8 = @splat(0);
+    const flint_pkg_path_len = try flint_pkg_dir.realPath(io, &flint_pkg_path_buffer);
+    const flint_pkg_path: []const u8 = flint_pkg_path_buffer[0..flint_pkg_path_len];
+
+    for (toml.deps) |dep| {
+        const fingerprint: []const u8 = try pkgDirName(gpa, dep);
+        defer gpa.free(fingerprint);
+
+        const dep_dir_path: []const u8 = try gpa.print("{s}{c}{s}", .{ flint_pkg_path, std.fs.path.sep, fingerprint });
+        defer gpa.free(dep_dir_path);
+
+        switch (dep.src) {
+            .none => unreachable,
+            .path => return error.NotImplementedYet,
+            .link => |link| {
+                const full_url: []const u8 = switch (link.tag_or_rev) {
+                    .none => unreachable,
+                    .tag => |tag| try gpa.print("{s}/archive/refs/tags/{s}.tar.gz", .{ link.url, tag }),
+                    .rev => |rev| try gpa.print("{s}/archive/{s}.tar.gz", .{ link.url, rev }),
+                };
+                defer gpa.free(full_url);
+
+                const tmp_file_path: []const u8 = try gpa.print("{s}{c}{s}.tar.gz", .{ flint_pkg_cache_path, std.fs.path.sep, fingerprint });
+                defer gpa.free(tmp_file_path);
+
+                if (std.Io.Dir.cwd().openFile(io, tmp_file_path, .{})) |open| open.close(io) else |_| {
+                    std.log.info("Fetching dependency '{s}'...", .{dep.name});
+                    try net.downloadFile(io, gpa, full_url, tmp_file_path);
+                    try net.checkFileIntegrity(io, gpa, tmp_file_path, link.sha256);
+
+                    try std.Io.Dir.cwd().deleteTree(io, dep_dir_path);
+                    try std.Io.Dir.cwd().createDir(io, dep_dir_path, .default_dir);
+                    try extract.tarGz(io, gpa, tmp_file_path, dep_dir_path, 1);
+                }
+            },
+        }
+    }
     return 0;
+}
+
+fn getPkgCacheDir(environ_map: *std.process.Environ.Map, allocator: std.mem.Allocator) ![]const u8 {
+    const sep = std.fs.path.sep;
+    switch (builtin.os.tag) {
+        .linux => {
+            if (environ_map.get("XDG_CACHE_HOME")) |xdg_cache| {
+                return allocator.print("{0s}{1c}flint{1c}pkg", .{ xdg_cache, sep });
+            } else if (environ_map.get("HOME")) |home| {
+                return allocator.print("{0s}{1c}.cache{1c}flint{1c}pkg", .{ home, sep });
+            } else {
+                return error.EnvironMapBrokenOnLinux;
+            }
+            unreachable;
+        },
+        .windows => {
+            const localappdata = environ_map.get("LOCALAPPDATA") orelse
+                return error.LocalAppDataNotSet;
+            return allocator.print("{0s}{1c}Flint{1c}cache{1c}pkg", .{ localappdata, sep });
+        },
+        else => @panic("Unsupported OS"),
+    }
+    unreachable;
+}
+
+fn pkgDirName(allocator: std.mem.Allocator, dep: Toml.Dep) ![]const u8 {
+    const link = dep.src.link;
+    const ref_kind: []const u8 = switch (link.tag_or_rev) {
+        .none => unreachable,
+        .tag => "tag",
+        .rev => "rev",
+    };
+    const ref: []const u8 = switch (link.tag_or_rev) {
+        .none => unreachable,
+        .tag => |tag| tag,
+        .rev => |rev| rev,
+    };
+
+    var hash = std.crypto.hash.sha2.Sha256.init(.{});
+    for ([_][]const u8{
+        "flint", dep.name, dep.kind, link.url, ref_kind, ref, link.sha256,
+    }) |part| {
+        hash.update(part);
+        hash.update(&.{0});
+    }
+
+    var digest: [32]u8 = undefined;
+    hash.final(&digest);
+
+    var enc_buf: [std.base64.url_safe_no_pad.Encoder.calcSize(32)]u8 = undefined;
+    const encoded = std.base64.url_safe_no_pad.Encoder.encode(&enc_buf, &digest);
+
+    return std.fmt.allocPrint(allocator, "{s}-{s}", .{ dep.name, encoded });
 }

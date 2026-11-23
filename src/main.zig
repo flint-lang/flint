@@ -350,8 +350,26 @@ pub fn main(init: std.process.Init) !u8 {
             return 0;
         },
         .init => return init_cmd.main(init.io, allocator, iter),
-        .fetch => return fetch_cmd.main(init.io, allocator, iter),
-        .build => return build_cmd.main(init.io, allocator, init.arena.allocator(), iter),
+        .fetch => {
+            const exit_code = try fetch_cmd.main(init.io, init.environ_map, allocator, init.arena.allocator());
+            if (exit_code != 0) {
+                return exit_code;
+            }
+            if (continuation) |next| {
+                continuation = .fetch;
+                continue :sw next;
+            }
+            return exit_code;
+        },
+        .build => {
+            // First fetch and then build
+            if (continuation) |prev| {
+                std.debug.assert(prev == .fetch);
+                return build_cmd.main(init.io, allocator, init.arena.allocator(), iter);
+            }
+            continuation = .build;
+            continue :sw .fetch;
+        },
     }
     unreachable;
 }
