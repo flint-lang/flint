@@ -53,6 +53,10 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
                 \\# The configuration is applied project-wide across all parts of the Flint toolchain.
                 \\[config]
                 \\indentation = 4
+                \\# The 'main' file is passed to the Flint compiler when calling 'flint build'
+                \\main = "src/main.ft"
+                \\# The 'lib' file acts as the entry point when this project is used as a library
+                \\lib = "src/lib.ft"
                 \\
                 \\# To depend on other Flint libraries you can use the 'flint' kind, for example the standard
                 \\# library. Extern dependencies can be used in Flint through 'use Std'. To use dependencies
@@ -61,8 +65,8 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
                 \\[Std]
                 \\kind = "flint"
                 \\url = "https://github.com/flint-lang/std"
-                \\tag = "v0.4.2"
-                \\sha256 = "TODO"
+                \\rev = "02a192d2f3e4cd85633fa52e8f75d6ff82efd22f"
+                \\sha256 = "447023befa39bf304a956dd7c8605df46beb2c201ec871a5033cb68efb93e212"
                 \\
             );
         },
@@ -74,22 +78,33 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
         else => return err,
     };
     if (root.openFile(io, "src/main.ft", .{})) |file| {
-        // Don't change the file if it already exists
         file.close(io);
     } else |err| switch (err) {
-        error.FileNotFound => {
-            // Create file and write to it if it exists
-            const file_main_ft = try root.createFile(io, "src/main.ft", .{});
-            var main_ft_writer = file_main_ft.writer(io, &.{});
-            const main_ft = &main_ft_writer.interface;
-            try main_ft.writeAll(
-                \\use Core.print
-                \\
-                \\def main():
-                \\    print("Hello, World!\n");
-                \\
-            );
-        },
+        error.FileNotFound => try root.writeFile(io, .{
+            .sub_path = "src/main.ft",
+            .data =
+            \\use "lib.ft" as lib
+            \\
+            \\def main():
+            \\    lib.greet();
+            \\
+            ,
+        }),
+        else => return err,
+    }
+    if (root.openFile(io, "src/lib.ft", .{})) |file| {
+        file.close(io);
+    } else |err| switch (err) {
+        error.FileNotFound => try root.writeFile(io, .{
+            .sub_path = "src/lib.ft",
+            .data =
+            \\use Core.print
+            \\
+            \\def greet():
+            \\    print("Hello from lib!\n");
+            \\
+            ,
+        }),
         else => return err,
     }
     return 0;

@@ -15,6 +15,8 @@ deps: []const Dep,
 
 pub const Config = struct {
     indentation: ?u32 = null,
+    main: ?[]const u8 = null,
+    lib: ?[]const u8 = null,
 
     comptime {
         for (std.meta.fieldTypes(Config)) |field| {
@@ -126,16 +128,20 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
 
     const TagOrField = union(enum) {
         tag: []const u8,
-        field: struct {
+        field: Field,
+
+        pub const Field = struct {
             name: []const u8,
-            value: union(enum) {
+            value: Value,
+
+            pub const Value = union(enum) {
                 string: []const u8,
                 number: i64,
                 bool: bool,
 
-                const This = @This();
+                pub const Tag = std.meta.Tag(Value);
 
-                pub fn expect(self: This, tag: std.meta.Tag(This), field_name: []const u8) !void {
+                pub fn expect(self: Value, tag: std.meta.Tag(Value), field_name: []const u8) !void {
                     if (self != tag) {
                         std.log.err("Expected value of type '{s}' for field '{s}', but got '{s}'", .{
                             @tagName(tag),
@@ -145,8 +151,8 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
                         return error.IncorrectTypeOfField;
                     }
                 }
-            },
-        },
+            };
+        };
     };
 
     var line_list: std.ArrayList(TagOrField) = .empty;
@@ -303,7 +309,7 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
                         if (std.mem.eql(u8, field.name, "indentation")) {
                             if (config.indentation != null) {
                                 std.log.err("Duplicate field 'indentation' found in in 'config' section", .{});
-                                return error.ConfigDuplicateFieldIn;
+                                return error.ConfigDuplicateField;
                             }
                             try field.value.expect(.number, "indentation");
                             if (field.value.number < 1) {
@@ -315,6 +321,20 @@ pub fn get(io: std.Io, arena: std.mem.Allocator) !Self {
                                 return error.ConfigIndentationTooLarge;
                             }
                             config.indentation = @intCast(field.value.number);
+                        } else if (std.mem.eql(u8, field.name, "main")) {
+                            if (config.main != null) {
+                                std.log.err("Duplicate field 'main' found in in 'config' section", .{});
+                                return error.ConfigDuplicateField;
+                            }
+                            try field.value.expect(.string, "main");
+                            config.main = field.value.string;
+                        } else if (std.mem.eql(u8, field.name, "lib")) {
+                            if (config.lib != null) {
+                                std.log.err("Duplicate field 'lib' found in in 'config' section", .{});
+                                return error.ConfigDuplicateField;
+                            }
+                            try field.value.expect(.string, "lib");
+                            config.lib = field.value.string;
                         } else {
                             std.log.err("Unrecognized 'config' field: {s}", .{field.name});
                             std.debug.print("       Available fields are:\n", .{});

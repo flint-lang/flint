@@ -10,10 +10,10 @@ const fip_cmd = @import("fip_cmd.zig");
 const target_cmd = @import("target_cmd.zig");
 const init_cmd = @import("init_cmd.zig");
 const fetch_cmd = @import("fetch_cmd.zig");
-const build_cmd = @import("build_cmd.zig");
 
 const Registry = @import("Registry.zig");
 const State = @import("State.zig");
+const Toml = @import("Toml.zig");
 
 const SubCommand = enum {
     help,
@@ -365,7 +365,28 @@ pub fn main(init: std.process.Init) !u8 {
             // First fetch and then build
             if (continuation) |prev| {
                 std.debug.assert(prev == .fetch);
-                return build_cmd.main(init.io, allocator, init.arena.allocator(), iter);
+                var args: std.ArrayList([]const u8) = .empty;
+                defer args.deinit(init.gpa);
+
+                try args.append(init.gpa, "flintc");
+                if ((try Toml.get(init.io, init.arena.allocator())).config.main) |main_file| {
+                    try args.append(init.gpa, main_file);
+                } else {
+                    std.log.err("Cannot execute 'flint build' without '[config].main' field set in 'flint.toml'", .{});
+                    return 1;
+                }
+                while (iter.next()) |next| {
+                    try args.append(init.gpa, next);
+                }
+
+                const compile_cmd = try std.process.run(init.gpa, init.io, .{
+                    .argv = args.items,
+                });
+                try stdout.writeAll(compile_cmd.stdout);
+                try stderr.writeAll(compile_cmd.stderr);
+                init.gpa.free(compile_cmd.stdout);
+                init.gpa.free(compile_cmd.stderr);
+                return compile_cmd.term.exited;
             }
             continuation = .build;
             continue :sw .fetch;
