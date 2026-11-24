@@ -41,16 +41,13 @@ pub fn main(io: std.Io, environ_map: *std.process.Environ.Map, gpa: std.mem.Allo
     const flint_pkg_path: []const u8 = flint_pkg_path_buffer[0..flint_pkg_path_len];
 
     for (toml.deps) |dep| {
-        const fingerprint: []const u8 = try pkgDirName(gpa, dep);
-        defer gpa.free(fingerprint);
-
-        const dep_dir_path: []const u8 = try gpa.print("{s}{c}{s}", .{ flint_pkg_path, std.fs.path.sep, fingerprint });
-        defer gpa.free(dep_dir_path);
-
         switch (dep.src) {
             .none => unreachable,
             .path => return error.NotImplementedYet,
             .link => |link| {
+                const dep_dir_path: []const u8 = try gpa.print("{s}{c}{s}", .{ flint_pkg_path, std.fs.path.sep, link.sha256 });
+                defer gpa.free(dep_dir_path);
+
                 const full_url: []const u8 = switch (link.tag_or_rev) {
                     .none => unreachable,
                     .tag => |tag| try gpa.print("{s}/archive/refs/tags/{s}.tar.gz", .{ link.url, tag }),
@@ -58,14 +55,16 @@ pub fn main(io: std.Io, environ_map: *std.process.Environ.Map, gpa: std.mem.Allo
                 };
                 defer gpa.free(full_url);
 
-                const tmp_file_path: []const u8 = try gpa.print("{s}{c}{s}.tar.gz", .{ flint_pkg_cache_path, std.fs.path.sep, fingerprint });
+                const tmp_file_path: []const u8 = try gpa.print("{s}{c}{s}.tar.gz", .{ flint_pkg_cache_path, std.fs.path.sep, link.sha256 });
                 defer gpa.free(tmp_file_path);
 
                 if (std.Io.Dir.cwd().openFile(io, tmp_file_path, .{})) |open| open.close(io) else |_| {
                     std.log.info("Fetching dependency '{s}'...", .{dep.name});
                     try net.downloadFile(io, gpa, full_url, tmp_file_path);
                     try net.checkFileIntegrity(io, gpa, tmp_file_path, link.sha256);
+                }
 
+                if (std.Io.Dir.cwd().openDir(io, dep_dir_path, .{})) |open| open.close(io) else |_| {
                     try std.Io.Dir.cwd().deleteTree(io, dep_dir_path);
                     try std.Io.Dir.cwd().createDir(io, dep_dir_path, .default_dir);
                     try extract.tarGz(io, gpa, tmp_file_path, dep_dir_path, 1);
@@ -97,34 +96,4 @@ fn getPkgCacheDir(environ_map: *std.process.Environ.Map, allocator: std.mem.Allo
         else => @panic("Unsupported OS"),
     }
     unreachable;
-}
-
-fn pkgDirName(allocator: std.mem.Allocator, dep: Toml.Dep) ![]const u8 {
-    const link = dep.src.link;
-    const ref_kind: []const u8 = switch (link.tag_or_rev) {
-        .none => unreachable,
-        .tag => "tag",
-        .rev => "rev",
-    };
-    const ref: []const u8 = switch (link.tag_or_rev) {
-        .none => unreachable,
-        .tag => |tag| tag,
-        .rev => |rev| rev,
-    };
-
-    var hash = std.crypto.hash.sha2.Sha256.init(.{});
-    for ([_][]const u8{
-        "flint", dep.name, dep.kind, link.url, ref_kind, ref, link.sha256,
-    }) |part| {
-        hash.update(part);
-        hash.update(&.{0});
-    }
-
-    var digest: [32]u8 = undefined;
-    hash.final(&digest);
-
-    var enc_buf: [std.base64.url_safe_no_pad.Encoder.calcSize(32)]u8 = undefined;
-    const encoded = std.base64.url_safe_no_pad.Encoder.encode(&enc_buf, &digest);
-
-    return std.fmt.allocPrint(allocator, "{s}-{s}", .{ dep.name, encoded });
 }
