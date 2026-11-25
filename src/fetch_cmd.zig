@@ -8,7 +8,7 @@ const extract = @import("extract.zig");
 const Toml = @import("Toml.zig");
 
 pub fn main(io: std.Io, environ_map: *std.process.Environ.Map, gpa: std.mem.Allocator, arena: std.mem.Allocator) !u8 {
-    const toml: Toml = try Toml.get(io, arena);
+    const toml: Toml = try Toml.get(io, arena, "flint.toml");
 
     const flint_dir: std.Io.Dir = if (std.Io.Dir.cwd().openDir(io, "flint", .{})) |dir| dir else |_| blk: {
         try std.Io.Dir.cwd().createDir(io, "flint", .default_dir);

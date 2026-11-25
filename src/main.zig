@@ -106,6 +106,7 @@ pub fn main(init: std.process.Init) !u8 {
 
     defer Registry.deinit();
     defer State.deinit(allocator);
+    defer Toml.deinit();
 
     var iter = try init.minimal.args.iterateAllocator(allocator);
     defer iter.deinit();
@@ -369,7 +370,7 @@ pub fn main(init: std.process.Init) !u8 {
                 defer args.deinit(init.gpa);
 
                 try args.append(init.gpa, "flintc");
-                if ((try Toml.get(init.io, init.arena.allocator())).config.main) |main_file| {
+                if ((try Toml.get(init.io, init.arena.allocator(), "flint.toml")).config.main) |main_file| {
                     try args.append(init.gpa, main_file);
                 } else {
                     std.log.err("Cannot execute 'flint build' without '[config].main' field set in 'flint.toml'", .{});

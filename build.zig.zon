@@ -8,6 +8,10 @@
             .url = "git+https://github.com/Hejsil/zig-clap#05faf3905e8548f5cc269a8836e154065e70128d",
             .hash = "clap-0.12.0-oBajB4XpAQCF1WRKnD5KOKPsnwwT_NNdAJ7Ww3irYJac",
         },
+        .tomlc17 = .{
+            .url = "https://github.com/cktan/tomlc17/archive/refs/tags/R250712.tar.gz",
+            .hash = "N-V-__8AAFeHAgBabNQUR0r3Nw2q1AtSvpwQVLt8ihh50mYO",
+        },
     },
     .paths = .{
         "build.zig",

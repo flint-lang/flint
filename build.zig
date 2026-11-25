@@ -12,6 +12,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const tomlc17_dep = b.dependency("tomlc17", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const tomlc17_translate = b.addTranslateC(.{
+        .root_source_file = tomlc17_dep.path("src/tomlc17.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     b.graph.poisonCache();
     const commit_hash: []const u8 = std.mem.trim(
         u8,
@@ -40,11 +50,15 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "clap", .module = clap_dep.module("clap") },
+                .{ .name = "toml", .module = tomlc17_translate.createModule() },
                 .{ .name = "defines", .module = defines.createModule() },
             },
         }),
     });
     b.installArtifact(exe);
+    exe.root_module.addCSourceFile(.{
+        .file = tomlc17_dep.path("src/tomlc17.c"),
+    });
 
     const run_step = b.step("run", "Run the app");
     const run_cmd = b.addRunArtifact(exe);
