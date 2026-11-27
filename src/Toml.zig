@@ -141,6 +141,9 @@ fn parseResult(arena: std.mem.Allocator, result: toml.toml_result_t) !Self {
                 }
                 try parseConfig(value, &config);
                 continue;
+            } else if (std.mem.eql(u8, name, "Core")) {
+                std.log.err("The 'flint.toml' file is not allowed to contain a '[Core]' table", .{});
+                return error.CoreTableInTomlFile;
             }
 
             if (value.type != toml.TOML_TABLE) {

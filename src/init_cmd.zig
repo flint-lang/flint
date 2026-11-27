@@ -65,8 +65,8 @@ pub fn main(io: std.Io, gpa: std.mem.Allocator, iter_start: std.process.Args.Ite
                 \\[Std]
                 \\kind = "flint"
                 \\url = "https://github.com/flint-lang/std"
-                \\rev = "02a192d2f3e4cd85633fa52e8f75d6ff82efd22f"
-                \\sha256 = "447023befa39bf304a956dd7c8605df46beb2c201ec871a5033cb68efb93e212"
+                \\rev = "4715a84bbfe3e138c4de7af2bf4d9994df0c9df5"
+                \\sha256 = "61a4c8bf18d3e3f49875114b08252810c1dd9cdc8e8d8f1dfed9191bb377fd7c"
                 \\
             );
         },
