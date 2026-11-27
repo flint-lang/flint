@@ -102,6 +102,17 @@ pub fn get(io: std.Io, arena: std.mem.Allocator, path: []const u8) !Self {
     }
 
     const parsed = try parseResult(arena, result);
+    // Check if every non-flint kinded dependency has an associated 'flint/ext/<dep_name>.toml' file
+    for (parsed.deps) |dep| {
+        if (std.mem.eql(u8, dep.kind, "flint")) {
+            continue;
+        }
+        const file_path = try arena.print("flint/ext/{s}.toml", .{dep.name});
+        if (std.Io.Dir.cwd().openFile(io, file_path, .{})) |open| open.close(io) else |_| {
+            std.log.err("Dependency '{s}' with kind '{s}' is missing its config file in '{s}'", .{ dep.name, dep.kind, file_path });
+            return error.DependencyMissesConfigFile;
+        }
+    }
     try map.put(try arena.dupe(u8, path), .{
         .value = parsed,
         .result = result,
